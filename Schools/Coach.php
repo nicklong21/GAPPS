@@ -10,6 +10,9 @@ class Coach extends \ElevenFingersCore\Accounts\User{
     protected $School;
     protected $Sports;
 
+    protected $Certification;
+
+
     static $db_sport_xref = 'sports_coaches';
 
 
@@ -37,13 +40,24 @@ class Coach extends \ElevenFingersCore\Accounts\User{
     }
     
     public function getCertification(string $school_year):?CoachCertification{
-        $Certifications = CoachCertification::findCertifications($this->database, array('acct_id'=>$this->id, 'school_year'=>$school_year));
-        if(!empty($Certifications)){
-            $MyCertification = $Certifications[0];
-        }else{
-            $MyCertification = null;
+        if(empty($this->Certification)){
+            $Certifications = CoachCertification::findCertifications($this->database, array('acct_id'=>$this->id, 'school_year'=>$school_year));
+            if(!empty($Certifications)){
+                $this->Certification = $Certifications[0];
+            }else{
+                $this->Certification = null;
+            }
         }
-        return $MyCertification;
+        return $this->Certification;
+    }
+
+    public function setCertification(CoachCertification $Certification){
+        $this->Certification = $Certification;
+    }
+
+    public function isLayCoach():bool{
+        $Profile = $this->getProfileObj();
+        return $Profile->getValue('is_lay_coach')?true:false;
     }
 
     public function getSchool():School{

@@ -88,11 +88,12 @@ class Question{
 
 
     public function testAnswer(string|array $response):?bool{
+        
         $possibleAnswers = $this->getAnswers();
         $correctAnswers = array_filter($possibleAnswers, function($answer) {
-                return $answer['correct'];
+                return $answer['is_correct'];
             });
-            
+        
         if (empty($correctAnswers)) {
             return null;
         }
@@ -114,7 +115,7 @@ class Question{
             $incorrectValues = array_map(function($answer) {
                 return $answer['answer'];
             }, array_filter($possibleAnswers, function($answer) {
-                return !$answer['correct'];
+                return !$answer['is_correct'];
             }));
     
             // Check if all values in response match correct values

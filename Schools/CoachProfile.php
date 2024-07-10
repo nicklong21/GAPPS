@@ -11,7 +11,7 @@ class CoachProfile extends UserProfile{
         'phone'=>'',
         'phone2'=>'', 
         'school_id'=>'',
-        'employee'=>'',
+        'is_lay_coach'=>'',
         'concussions_in_sports'=> '',
         'sudden_cardiac_arrest'=> '',
         'heat-illness-prevention'=> '',

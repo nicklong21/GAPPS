@@ -58,12 +58,15 @@ class Student{
         return $this->DATA['lastname'];
     }
 
-    public function getGrade():?string{
+    public function getGrade(?DateTimeImmutable $Today = null):?string{
         $grade = null;
         $year_entered_9th = $this->DATA['entered9th'];
         if(!empty($year_entered_9th)){
-            $this_year = date('Y');
-            $this_month = date('n');
+            if(empty($Today)){
+                $Today = new DateTimeImmutable();
+            }
+            $this_year = $Today->format('Y');
+            $this_month = $Today->format('n');
             if($this_month <= 6){
                 $this_year = $this_year-1;
             }
@@ -90,14 +93,14 @@ class Student{
         $dob = $this->DATA['dob'];
         if(!empty($dob)){
             try{
-                $BirthDate = new \DateTimeImmutable($dob);
+                $BirthDate = new DateTimeImmutable($dob);
                 if(empty($Today)){
-                    $Today = new \DateTimeImmutable();
+                    $Today = new DateTimeImmutable();
                 }
                 $AgeInterval = $Today->diff($BirthDate);
                 $age = $AgeInterval->format('%y');
             }catch(\Exception $e){
-                $this->addErrorMsg('Invalid Format for Date of Birth','Error');
+                $this->addErrorMsg('Invalid Format for Date of Birth','Error',array('student_id'=>$this->id, 'dob'=>$dob));
             }
         }
         return $age;
@@ -129,4 +132,3 @@ class Student{
 }
 
 
-?>

@@ -13,14 +13,17 @@ class Coach extends \ElevenFingersCore\Accounts\User{
     static $db_sport_xref = 'sports_coaches';
 
 
-    public function Save(Array $DATA):bool{
+    public function Save(?Array $DATA = null):bool{
+        if(empty($DATA)){
+            $DATA = $this->DATA;
+        }
         if(array_key_exists('email', $DATA)){
             $DATA['username'] = $DATA['email'];
         }
         return parent::Save($DATA);
 
     }
-    function getProfileObj():UserProfile{
+    function getProfileObj():CoachProfile{
         if(empty($this->Profile)){
             $AccountType = $this->getAccountType();
             $account_type_name = $AccountType->getName();
@@ -31,7 +34,17 @@ class Coach extends \ElevenFingersCore\Accounts\User{
         }
     }
     return $this->Profile;
-    }   
+    }
+    
+    public function getCertification(string $school_year):?CoachCertification{
+        $Certifications = CoachCertification::findCertifications($this->database, array('acct_id'=>$this->id, 'school_year'=>$school_year));
+        if(!empty($Certifications)){
+            $MyCertification = $Certifications[0];
+        }else{
+            $MyCertification = null;
+        }
+        return $MyCertification;
+    }
 
     public function getSchool():School{
         if(empty($this->School)){

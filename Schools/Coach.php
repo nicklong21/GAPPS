@@ -21,11 +21,29 @@ class Coach extends \ElevenFingersCore\Accounts\User{
             $DATA = $this->DATA;
         }
         if(array_key_exists('email', $DATA)){
-            $DATA['username'] = $DATA['email'];
+            //$DATA['username'] = $DATA['email'];
         }
-        return parent::Save($DATA);
+        $success = parent::Save($DATA);
 
+        if($success){
+            $sports = isset($DATA['sports'])?$DATA['sports']:array();
+            $current_sports = $this->getSportIDs();
+            $sport_int = array_map('intval',$sports);
+            $new_sports = array_diff($sport_int, $current_sports);
+            $removed_sports = array_diff($current_sports,$sport_int);
+            foreach($new_sports AS $sport_id){
+                $insert = array('coach_id'=>$this->getID(),'sport_id'=>$sport_id);
+                $this->database->insertArray(static::$db_sport_xref,$insert,'id');
+            }
+            if(!empty($removed_sports)){
+                $sql = 'DELETE FROM '.static::$db_sport_xref.' WHERE coach_id = :coach_id AND sport_id IN ('.implode(',',$removed_sports).')';
+                $this->database->query($sql,array(':coach_id'=>$this->getID()));
+            }
+        }
+
+        return $success;
     }
+
     function getProfileObj():CoachProfile{
         if(empty($this->Profile)){
             $AccountType = $this->getAccountType();
@@ -69,6 +87,10 @@ class Coach extends \ElevenFingersCore\Accounts\User{
         return $this->School;
     }
 
+    public function setSchool(School $School){
+        $this->School = $School;
+    }
+
     public function getSchoolID():?int{
         if(!empty($this->School)){
             $school_id = $this->School->getID();
@@ -76,6 +98,8 @@ class Coach extends \ElevenFingersCore\Accounts\User{
             $Profile = $this->getProfileObj();
             $school_id = $Profile->getValue('school_id');
         }
+        $school_id = !empty($school_id)?intval($school_id):null;
+        
         return $school_id;
     }
 
@@ -88,13 +112,18 @@ class Coach extends \ElevenFingersCore\Accounts\User{
     public function getSports():array{
         if(empty($this->Sports)){
             $this->Sports = array();
-            $data = $this->database->getResultListByKey(static::$db_sport_xref,array('coach_id'=>$this->getID()),'sport_id');
+            $data = $this->getSportIDs();
             if(!empty($data)){
             $Sports = Sport::getSports($this->database, array('id'=>array('IN'=>$data)));
             $this->Sports = $Sports;
             }
     }
     return $this->Sports;
+    }
+
+    public function getSportIDs():array{
+        $sport_ids = $this->database->getResultListByKey(static::$db_sport_xref,array('coach_id'=>$this->getID()),'sport_id');
+        return $sport_ids;
     }
 
     public function hasSport(int $sport_id):bool{
@@ -121,5 +150,24 @@ class Coach extends \ElevenFingersCore\Accounts\User{
         }
     }
     return $Coaches;
+    }
+    /**
+     *  
+     * @param \ElevenFingersCore\Database\DatabaseConnectorPDO $DB
+     * @param int $sport_id
+     * @param mixed $filter
+     * @return Coach[]
+     */
+    static function getSportCoaches(DatabaseConnectorPDO $DB, int $sport_id, ?array $filter = array()):array{
+        $data = $DB->getResultListByKey(static::$db_sport_xref, array('sport_id'=>$sport_id),'coach_id');
+        $Coaches = array();
+        if(!empty($data)){
+            $filter['id'] = array('IN'=>$data);
+            $coach_data = $DB->getArrayListByKey(static::$table_name,$filter);
+            foreach($coach_data as $coach){
+                $Coaches[] = new static($DB, null, $coach);
+        }
+        }
+        return $Coaches;
     }
 }

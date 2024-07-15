@@ -37,13 +37,26 @@ class Coach extends \ElevenFingersCore\Accounts\User{
         $success = parent::Save($DATA);
 
         if($success){
-            $sports = isset($DATA['sports'])?$DATA['sports']:array();
-            $current_sports = $this->getSportIDs();
-            $sport_int = array_map('intval',$sports);
-            $new_sports = array_diff($sport_int, $current_sports);
-            $removed_sports = array_diff($current_sports,$sport_int);
-            foreach($new_sports AS $sport_id){
-                $insert = array('coach_id'=>$this->getID(),'sport_id'=>$sport_id);
+            $head_sports = isset($DATA['head_coach'])?$DATA['head_coach']:array();
+            $asst_sports = isset($DATA['asst_coach'])?$DATA['asst_coach']:array();
+            $current_sports = $this->getSportsCoachedDATA();
+            $new_sports = array();
+            foreach($asst_sports AS $sport_id){
+                $new_sports[$sport_id] = array('id'=>0, 'sport_id'=>$sport_id,'position'=>'AC');
+            }
+            foreach($head_sports AS $sport_id){
+                $new_sports[$sport_id] = array('id'=>0, 'sport_id'=>$sport_id,'position'=>'HC');
+            }
+            $removed_sports = array();
+            foreach($current_sports AS $data){
+                if(isset($new_sports[$data['sport_id']])){
+                    $new_sports[$data['sport_id']]['id'] = $data['id'];
+                }else{
+                    $removed_sports[] = $data['sport_id'];
+                }
+            }
+            foreach($new_sports AS $insert){
+                $insert['coach_id'] = $this->getID();
                 $this->database->insertArray(static::$db_sport_xref,$insert,'id');
             }
             if(!empty($removed_sports)){
@@ -51,7 +64,6 @@ class Coach extends \ElevenFingersCore\Accounts\User{
                 $this->database->query($sql,array(':coach_id'=>$this->getID()));
             }
         }
-
         return $success;
     }
 
@@ -165,18 +177,22 @@ class Coach extends \ElevenFingersCore\Accounts\User{
     public function getSports():array{
         if(empty($this->Sports)){
             $this->Sports = array();
-            $data = $this->getSportIDs();
+            $data = $this->getSportsCoachedDATA();
             if(!empty($data)){
-            $Sports = Sport::getSports($this->database, array('id'=>array('IN'=>$data)));
+            $sports_ids = array();
+            foreach($sports_ids AS $s){
+                $sports_ids[] = $s['sport_id'];
+            }
+            $Sports = Sport::getSports($this->database, array('id'=>array('IN'=>$sports_ids)));
             $this->Sports = $Sports;
             }
     }
     return $this->Sports;
     }
 
-    public function getSportIDs():array{
-        $sport_ids = $this->database->getResultListByKey(static::$db_sport_xref,array('coach_id'=>$this->getID()),'sport_id');
-        return $sport_ids;
+    public function getSportsCoachedDATA():array{
+        $coached = $this->database->getArrayListByKey(static::$db_sport_xref,array('coach_id'=>$this->getID()));
+        return $coached;
     }
 
     public function hasSport(int $sport_id):bool{

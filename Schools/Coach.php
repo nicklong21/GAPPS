@@ -1,9 +1,12 @@
 <?php
 namespace ElevenFingersCore\GAPPS\Schools;
+
+use DateTimeImmutable;
 use ElevenFingersCore\Accounts\UserProfile;
 use ElevenFingersCore\Database\DatabaseConnectorPDO;
 use ElevenFingersCore\GAPPS\Schools\School;
 use ElevenFingersCore\GAPPS\Sports\Sport;
+use ElevenFingersCore\Utilities\UtilityFunctions;
 
 class Coach extends \ElevenFingersCore\Accounts\User{
 
@@ -12,9 +15,17 @@ class Coach extends \ElevenFingersCore\Accounts\User{
 
     protected $Certification;
 
+    protected $current_school_year;
+
 
     static $db_sport_xref = 'sports_coaches';
 
+    public function getAccountData():array{
+        $response = parent::getAccountData();
+        $response['profile']['certification-date'] = $this->getCertificationDate('Y-m-d');
+        $response['profile']['gapps-certification'] = $this->getCertificationYear();
+        return $response;
+    }
 
     public function Save(?Array $DATA = null):bool{
         if(empty($DATA)){
@@ -56,6 +67,25 @@ class Coach extends \ElevenFingersCore\Accounts\User{
     }
     return $this->Profile;
     }
+
+    function getCertificationDate(?string $format = null):null|string|DateTimeImmutable{
+        $certfication_date = $this->getProfileValue('certification-date');
+        if(!empty($certfication_date)){
+            $CertificationDate = new DateTimeImmutable($certfication_date);
+            if(!empty($format)){
+                $certfication_date = $CertificationDate->format($format);
+            }else{
+                $certfication_date = $CertificationDate;
+            }
+        }else{
+            $certfication_date = null;
+        }
+        return $certfication_date;
+    }
+
+    function getCertificationYear():?string{
+        return $this->getProfileValue('gapps-certification');
+    }
     
     public function getCertification(string $school_year):?CoachCertification{
         if(empty($this->Certification)){
@@ -71,6 +101,29 @@ class Coach extends \ElevenFingersCore\Accounts\User{
 
     public function setCertification(CoachCertification $Certification){
         $this->Certification = $Certification;
+    }
+
+    public function getStatus():string{
+        $status = $this->DATA['status'];
+        if($status != 'LOCKED'){
+            $type = $this->getAccountTypeName();
+            if($type == 'Coach'){
+                $certification_year = $this->getProfileValue('gapps-certification');
+                if(empty($certification_year) || $certification_year != $this->getSchoolYear()){
+                    $status = 'NOT APPROVED';
+                }else{
+                    $certification_date = $this->getProfileValue('certification-date');
+                    if(empty($certification_date)){
+                        $status = 'PENDING';
+                    }elseif($this->DATA['status'] != 'Active'){
+                        $status = 'APPROVED';
+                    }else{
+                        $status = 'Active';
+                    }
+                }
+            }
+        }
+        return $status;
     }
 
     public function isLayCoach():bool{
@@ -136,6 +189,17 @@ class Coach extends \ElevenFingersCore\Accounts\User{
             }
         }
         return $re;
+    }
+
+    public function setSchoolYear(string $school_year){
+        $this->current_school_year = $school_year;
+    }
+    
+    public function getSchoolYear():string{
+        if(empty($this->current_school_year)){
+            $this->current_school_year = UtilityFunctions::formatSchoolYear();
+        }
+        return $this->current_school_year;
     }
 
     /** @return Coach[] */

@@ -309,6 +309,11 @@ class AESStudent{
         $this->parent_id = $parent_id;
     }
 
+    public function getFullName():string{
+        $fullname = $this->DATA['lastname'].', '.$this->DATA['firstname'];
+        return $fullname;
+    }
+
     public function get($key){
         $value = null;
         if(array_key_exists($key, $this->vital_info)){

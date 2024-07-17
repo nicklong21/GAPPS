@@ -24,7 +24,7 @@ class AESStudent{
 
     protected $vital_info = array(
         'date_of_birth'=>NULL,
-        'age'=>NULL,
+        'current_age'=>NULL,
         'gender'=>NULL,
         'bc_approved'=>NULL,
     );
@@ -186,10 +186,14 @@ class AESStudent{
     }
 
     protected function prepareForSave(?array $data):?array{
+        
         if(is_null($data)){
             $data = $this->DATA;
         }
         
+        if(array_key_exists('requested_school',$data) && $data['requested_school'] == 'NULL'){
+            $data['requested_school'] = 0;
+        }
         $data['vital_info'] = json_encode($this->prepareVitalInfoForSave($data));
         $data['contact_info'] = json_encode($this->prepareContactInfoForSave($data));
         $data['education_info'] = json_encode($this->prepareEducationInfoForSave($data));
@@ -239,7 +243,7 @@ class AESStudent{
             if(!empty($options)){
                 foreach($options AS $option){
                 $value = isset($data['education_location'][$school_year][$option])? $data['education_location'][$school_year][$option]:NULL;
-                $year[$option] = [$value];
+                $year[$option] = $value;
                 }
             }
             $history[$school_year] = $year;
@@ -296,11 +300,11 @@ class AESStudent{
     }
     protected function prepareAgreementInfoForSave(array $data):array{
         $agreement_info = $this->agreement_info;
-        if(array_key_exists('agreement',$data)){
-            $agreement_info['agreement'] = $data['agreement']?date('Y-m-d H:i:s'):null;
+        if(array_key_exists('agree',$data)){
+            $agreement_info['agreement'] = !empty($data['agree'])?date('Y-m-d H:i:s'):null;
         }
-        if(array_key_exists('understanding',$data)){
-            $agreement_info['understanding'] = $data['understanding']?date('Y-m-d H:i:s'):null;
+        if(array_key_exists('understand',$data)){
+            $agreement_info['understanding'] = !empty($data['understand'])?date('Y-m-d H:i:s'):null;
         }
         return $agreement_info;
     }
@@ -379,7 +383,7 @@ class AESStudent{
             'GAPPS'=>array(),
         );
         if(!empty($this->activity_info['GHSA_sports_participation'][$school_year])){
-            $participation['GHSA'] = $this->activity_info['GAPPS_sports_participation'][$school_year];
+            $participation['GHSA'] = $this->activity_info['GHSA_sports_participation'][$school_year];
         }
         if(!empty($this->activity_info['GAPPS_sports_participation'][$school_year])){
             $participation['GAPPS'] = $this->activity_info['GAPPS_sports_participation'][$school_year];
@@ -393,7 +397,7 @@ class AESStudent{
             'GAPPS'=>array(),
         );
         if(!empty($this->activity_info['GHSA_arts_participation'][$school_year])){
-            $participation['GHSA'] = $this->activity_info['GAPPS_arts_participation'][$school_year];
+            $participation['GHSA'] = $this->activity_info['GHSA_arts_participation'][$school_year];
         }
         if(!empty($this->activity_info['GAPPS_arts_participation'][$school_year])){
             $participation['GAPPS'] = $this->activity_info['GAPPS_arts_participation'][$school_year];

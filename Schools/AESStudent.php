@@ -313,6 +313,11 @@ class AESStudent{
         $this->parent_id = $parent_id;
     }
 
+    public function getFullName():string{
+        $fullname = $this->DATA['lastname'].', '.$this->DATA['firstname'];
+        return $fullname;
+    }
+
     public function get($key){
         $value = null;
         if(array_key_exists($key, $this->vital_info)){
@@ -376,6 +381,152 @@ class AESStudent{
         return $ResourceFiles;
     }
 
+    public function getCurrentAge(?DateTimeImmutable $Today = null):?int{
+        $age = null;
+        $dob = $this->vital_info['date_of_birth'];
+        if(!empty($dob)){
+            try{
+                $BirthDate = new DateTimeImmutable($dob);
+                if(empty($Today)){
+                    $Today = new DateTimeImmutable();
+                }
+                $AgeInterval = $Today->diff($BirthDate);
+                $age = $AgeInterval->format('%y');
+            }catch(\Exception $e){
+                $this->addErrorMsg('Invalid Format for Date of Birth','Error');
+            }
+        }
+        return $age;
+    }
+
+    public function getPaymentInfo(){
+        $payment_info = array('date'=>null,'amount'=>'','type'=>'');
+        if(!empty($this->DATA['payment_id'])){
+            $data = $this->database->getArrayByKey('student_payments',array('id'=>$this->DATA['payment_id']));
+            if($data){
+                $payment_info['date'] = $data['payment_date'];
+                $payment_info['amount'] = $data['payment_amount'];
+                $payment_info['type'] = $data['payment_type'];
+            }
+        }
+        return $payment_info;
+    }
+
+    public function approveDocument(string $type):bool{
+        $success = false;
+        $update = array();
+        switch($type){
+            case 'birth_certificate':
+                $success = $this->deleteBirthCertificateFile();
+                if($success){
+                    $update = array('bc_file'=>json_encode(array()), 'bc_approved'=>1);
+                }
+                break;
+                default:
+                break;
+        }
+        if($success){
+            $success = $this->Save($update);
+        }
+        return $success;
+    }
+
+    private function deleteBirthCertificateFile():bool{
+        $success = true;
+        $Resources = $this->getDocuments('birth_certificate');
+        if(!empty($Resources)){
+            /** @var ResourceFile $Resource */
+            foreach($Resources AS $Resource){   
+                $FileHandler = $Resource->getFileHandler();
+                $success = $FileHandler->Delete();
+                if($success){
+                    $success = $Resource->Delete();
+                    if($success){
+                        $this->addErrorMsg($Resource->getErrorMsg());
+                    }
+                }else{
+                    $this->addErrorMsg($FileHandler->getErrorMsg());
+                }
+            }
+        }
+        return $success;
+    }
+
+    public function rejectStudentRecord():bool{
+        if($this->DATA['student_id']){
+            
+            $update = array(
+                'id'=>$this->DATA['student_id'],
+                'school_id'=>0,
+                'status'=>'REMOVED',
+                'aes_status'=>'Not Approved',
+            );
+            $this->database->insertArray('students',$update,'id');
+        }
+        return true;
+    }
+
+    public function removeFromSchool():bool{
+        $success = true;
+        if(empty($this->getID())){
+            $success = false;
+            $this->addErrorMsg('AES Student Record not found');
+        }
+        if($success){
+            $student_id = $this->get('student_id');
+            if($student_id){
+                $update = array('id'=>$student_id,'school_id'=>0,);
+                $success = $this->database->insertArray('students',$update,'id');
+            }
+        }
+        if($success){
+            $update = array('id'=>$this->getID(),'status'=>'APPROVED','school_id'=>0);
+            $success = $this->database->insertArray(static::$db_table,$update,'id');
+        }
+        return $success;
+    }
+
+    public function updateStudentRecord():bool{
+        $DATA = $this->getDATA();
+        $aes_status = $DATA['status'] == 'APPROVED' || $DATA['status'] == 'ASSIGNED' ? 'Approved' : 'Not Approved';
+        $student_record =  array(
+            'id'=>$this->get('student_id'),
+            'status'=>'ELIGIBLE',
+            'school_id'=>$this->get('school_id'),
+            'firstname'=>$this->get('firstname'),
+            'lastname'=>$this->get('lastname'),
+            'gender'=>$this->get('gender'),
+            'age'=>$this->getCurrentAge(),
+            'dob'=>$this->get('date_of_birth'),
+            'is_aes'=>'AES',
+            'aes_status'=>$aes_status,
+            'aes_record'=>$this->getID(),
+            'entered9th'=>$this->get('entered_9th'),
+        );
+        if($DATA['status'] != 'ASSIGNED'){
+            $student_record['status'] = 'INELIGIBLE';
+        }
+        if($DATA['status'] == 'REJECTED'){
+            $student_record['status'] = 'REMOVED';
+        }
+        $success = $this->database->insertArray('students',$student_record,'id');
+
+        /*
+        $Student = new Student($this->database,$DATA['student_id']);
+        $Student->Save($student_record);
+        $student_id = $Student->getID();
+        */
+        if($success){
+            $student_id = $student_record['id'];
+            $insert = array('id'=>$this->id,'student_id'=>$student_id);
+            $success = $this->database->insertArray(static::$db_table,$insert,'id');
+        }
+        if(!$success){
+            $this->addErrorMsg('Unable to Save Student Record',$DATA);
+        }
+        return  $success;
+    } 
+
     public function getSportsSelections(string $school_year):array{
         
         $participation = array(
@@ -408,11 +559,16 @@ class AESStudent{
     /** @return AESStudent[] */
     public static function getStudents(DatabaseConnectorPDO $DB, ?Array $args = array(), ?Array $order_by = array('firstname','lastname')):array{
         $students = array();
-        $results = $DB->getArrayListByKey(static::$db_table,$args);
+        $results = $DB->getArrayListByKey(static::$db_table,$args,$order_by);
         foreach($results AS $result){
             $students[] = new static($DB,null,$result);
         }
         return $students;
+    }
+
+    public static function getSubmissionYears(DatabaseConnectorPDO $DB) :array{
+        $years = $DB->getResultList('SELECT DISTINCT submission_year AS year FROM '.static::$db_table.' ORDER BY submission_year DESC');
+        return $years;
     }
 
 

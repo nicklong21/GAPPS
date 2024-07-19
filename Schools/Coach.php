@@ -39,29 +39,31 @@ class Coach extends \ElevenFingersCore\Accounts\User{
         if($success){
             $head_sports = isset($DATA['head_coach'])?$DATA['head_coach']:array();
             $asst_sports = isset($DATA['asst_coach'])?$DATA['asst_coach']:array();
-            $current_sports = $this->getSportsCoachedDATA();
-            $new_sports = array();
-            foreach($asst_sports AS $sport_id){
-                $new_sports[$sport_id] = array('id'=>0, 'sport_id'=>$sport_id,'position'=>'AC');
-            }
-            foreach($head_sports AS $sport_id){
-                $new_sports[$sport_id] = array('id'=>0, 'sport_id'=>$sport_id,'position'=>'HC');
-            }
-            $removed_sports = array();
-            foreach($current_sports AS $data){
-                if(isset($new_sports[$data['sport_id']])){
-                    $new_sports[$data['sport_id']]['id'] = $data['id'];
-                }else{
-                    $removed_sports[] = $data['sport_id'];
+            if(!empty($head_sports) || !empty($asst_sports)){
+                $current_sports = $this->getSportsCoachedDATA();
+                $new_sports = array();
+                foreach($asst_sports AS $sport_id){
+                    $new_sports[$sport_id] = array('id'=>0, 'sport_id'=>$sport_id,'position'=>'AC');
                 }
-            }
-            foreach($new_sports AS $insert){
-                $insert['coach_id'] = $this->getID();
-                $this->database->insertArray(static::$db_sport_xref,$insert,'id');
-            }
-            if(!empty($removed_sports)){
-                $sql = 'DELETE FROM '.static::$db_sport_xref.' WHERE coach_id = :coach_id AND sport_id IN ('.implode(',',$removed_sports).')';
-                $this->database->query($sql,array(':coach_id'=>$this->getID()));
+                foreach($head_sports AS $sport_id){
+                    $new_sports[$sport_id] = array('id'=>0, 'sport_id'=>$sport_id,'position'=>'HC');
+                }
+                $removed_sports = array();
+                foreach($current_sports AS $data){
+                    if(isset($new_sports[$data['sport_id']])){
+                        $new_sports[$data['sport_id']]['id'] = $data['id'];
+                    }else{
+                        $removed_sports[] = $data['sport_id'];
+                    }
+                }
+                foreach($new_sports AS $insert){
+                    $insert['coach_id'] = $this->getID();
+                    $this->database->insertArray(static::$db_sport_xref,$insert,'id');
+                }
+                if(!empty($removed_sports)){
+                    $sql = 'DELETE FROM '.static::$db_sport_xref.' WHERE coach_id = :coach_id AND sport_id IN ('.implode(',',$removed_sports).')';
+                    $this->database->query($sql,array(':coach_id'=>$this->getID()));
+                }
             }
         }
         return $success;
@@ -146,7 +148,7 @@ class Coach extends \ElevenFingersCore\Accounts\User{
     public function getSchool():School{
         if(empty($this->School)){
             $Profile = $this->getProfileObj();
-            $school_id = $Profile->getValue('school_id');
+            $school_id = intval($Profile->getValue('school_id'));
             $this->School = new School($this->database, $school_id);
         }
         return $this->School;
@@ -181,7 +183,9 @@ class Coach extends \ElevenFingersCore\Accounts\User{
             if(!empty($data)){
             $sports_ids = array();
             foreach($sports_ids AS $s){
-                $sports_ids[] = $s['sport_id'];
+                if(!empty($s['sport_id'])){
+                    $sports_ids[] = $s['sport_id'];
+                }
             }
             $Sports = Sport::getSports($this->database, array('id'=>array('IN'=>$sports_ids)));
             $this->Sports = $Sports;
@@ -207,6 +211,18 @@ class Coach extends \ElevenFingersCore\Accounts\User{
         return $re;
     }
 
+    public function isHeadCoach():bool{
+        $coached = $this->getSportsCoachedDATA();
+        $is_head = false;
+        foreach($coached AS $sport){
+            if($sport['position'] == 'HC'){
+                $is_head = true;
+                break;
+            }
+        }
+        return $is_head;
+    }
+
     public function setSchoolYear(string $school_year){
         $this->current_school_year = $school_year;
     }
@@ -224,6 +240,7 @@ class Coach extends \ElevenFingersCore\Accounts\User{
         $Coaches = array();
         if(!empty($data)){
             $filter['id'] = array('IN'=>$data);
+            $filter['usertype'] = array('!='=>17);
             $coach_data = $DB->getArrayListByKey(static::$table_name,$filter);
             foreach($coach_data as $coach){
                 $Coaches[] = new static($DB, null, $coach);

@@ -24,7 +24,7 @@ class AESStudent{
 
     protected $vital_info = array(
         'date_of_birth'=>NULL,
-        'age'=>NULL,
+        'current_age'=>NULL,
         'gender'=>NULL,
         'bc_approved'=>NULL,
     );
@@ -128,6 +128,11 @@ class AESStudent{
                     $this->vital_info[$key] = $vital_info[$key];
                 }
             }
+            if($this->vital_info['gender'] == 'M'){
+                $this->vital_info['gender'] = 'Male';
+            }elseif($this->vital_info['gender'] == 'F'){
+                $this->vital_info['gender'] = 'Female';
+            }
         }
         if(!empty($contact_info)){
             foreach($this->contact_info as $key=>$val){
@@ -186,10 +191,14 @@ class AESStudent{
     }
 
     protected function prepareForSave(?array $data):?array{
+        
         if(is_null($data)){
             $data = $this->DATA;
         }
         
+        if(array_key_exists('requested_school',$data) && $data['requested_school'] == 'NULL'){
+            $data['requested_school'] = 0;
+        }
         $data['vital_info'] = json_encode($this->prepareVitalInfoForSave($data));
         $data['contact_info'] = json_encode($this->prepareContactInfoForSave($data));
         $data['education_info'] = json_encode($this->prepareEducationInfoForSave($data));
@@ -239,7 +248,7 @@ class AESStudent{
             if(!empty($options)){
                 foreach($options AS $option){
                 $value = isset($data['education_location'][$school_year][$option])? $data['education_location'][$school_year][$option]:NULL;
-                $year[$option] = [$value];
+                $year[$option] = $value;
                 }
             }
             $history[$school_year] = $year;
@@ -296,11 +305,11 @@ class AESStudent{
     }
     protected function prepareAgreementInfoForSave(array $data):array{
         $agreement_info = $this->agreement_info;
-        if(array_key_exists('agreement',$data)){
-            $agreement_info['agreement'] = $data['agreement']?date('Y-m-d H:i:s'):null;
+        if(array_key_exists('agree',$data)){
+            $agreement_info['agreement'] = !empty($data['agree'])?date('Y-m-d H:i:s'):null;
         }
-        if(array_key_exists('understanding',$data)){
-            $agreement_info['understanding'] = $data['understanding']?date('Y-m-d H:i:s'):null;
+        if(array_key_exists('understand',$data)){
+            $agreement_info['understanding'] = !empty($data['understand'])?date('Y-m-d H:i:s'):null;
         }
         return $agreement_info;
     }
@@ -395,6 +404,30 @@ class AESStudent{
         return $age;
     }
 
+    public function getGrade(?DateTimeImmutable $Today = null):?string{
+        $grade = null;
+        if(!empty($this->education_info['entered_9th'])){
+            $year_entered_9th = $this->education_info['entered_9th'];
+            if(!empty($year_entered_9th)){
+                if(empty($Today)){
+                    $Today = new DateTimeImmutable();
+                }
+                $this_year = $Today->format('Y');
+                $this_month = $Today->format('n');
+                if($this_month <= 6){
+                    $this_year = $this_year-1;
+                }
+                $grade = 9 - ($year_entered_9th - $this_year);
+                if($grade < 1){
+                    $grade = 'PreK';
+                }else if($grade > 12){
+                    $grade = 'Graduate';
+                }
+            }
+        }
+        return $grade;
+    }
+
     public function getPaymentInfo(){
         $payment_info = array('date'=>null,'amount'=>'','type'=>'');
         if(!empty($this->DATA['payment_id'])){
@@ -450,7 +483,7 @@ class AESStudent{
 
     public function rejectStudentRecord():bool{
         if($this->DATA['student_id']){
-            
+            $school_id = $this->DATA['school_id'];
             $update = array(
                 'id'=>$this->DATA['student_id'],
                 'school_id'=>0,
@@ -458,6 +491,11 @@ class AESStudent{
                 'aes_status'=>'Not Approved',
             );
             $this->database->insertArray('students',$update,'id');
+            if($school_id){
+                $sql = 'DELETE FROM school_students WHERE school_id = :school_id AND student_id = :student_id';
+                $params = array(':school_id'=>$school_id, ':student_id'=>$this->DATA['student_id']);
+                $this->database->query($sql,$params);
+            }
         }
         return true;
     }
@@ -473,6 +511,12 @@ class AESStudent{
             if($student_id){
                 $update = array('id'=>$student_id,'school_id'=>0,);
                 $success = $this->database->insertArray('students',$update,'id');
+                $school_id = $this->get('school_id');
+                if($school_id){
+                    $sql = 'DELETE FROM school_students WHERE school_id = :school_id AND student_id = :student_id';
+                    $params = array(':school_id'=>$school_id, ':student_id'=>$student_id);
+                    $this->database->query($sql,$params);
+                }
             }
         }
         if($success){
@@ -506,7 +550,22 @@ class AESStudent{
             $student_record['status'] = 'REMOVED';
         }
         $success = $this->database->insertArray('students',$student_record,'id');
-
+        $student_id = $student_record['id'];
+        $status = $student_record['status'];
+        $school_id = $student_record['school_id'];
+        /*
+        $sql = 'INSERT INTO school_students (school_id, student_id, status) VALUES (:school_id, :student_id, :status) ON DUPLICATE KEY UPDATE status = VALUES(status)';
+        $params = array(':school_id'=>$school_id,':student_id'=>$student_id,':status'=>$status);
+        $this->database->query($sql,$params);
+        */
+        $xref_id = $this->database->getResultByKey('school_students',array('school_id'=>$school_id,'student_id'=>$student_id),'id');
+        $insert = array(
+            'id'=>$xref_id,
+            'student_id'=>$student_id,
+            'school_id'=>$school_id,
+            'status'=>$status,
+        );
+        $this->database->insertArray('school_students',$insert, 'id');
         /*
         $Student = new Student($this->database,$DATA['student_id']);
         $Student->Save($student_record);
@@ -530,7 +589,7 @@ class AESStudent{
             'GAPPS'=>array(),
         );
         if(!empty($this->activity_info['GHSA_sports_participation'][$school_year])){
-            $participation['GHSA'] = $this->activity_info['GAPPS_sports_participation'][$school_year];
+            $participation['GHSA'] = $this->activity_info['GHSA_sports_participation'][$school_year];
         }
         if(!empty($this->activity_info['GAPPS_sports_participation'][$school_year])){
             $participation['GAPPS'] = $this->activity_info['GAPPS_sports_participation'][$school_year];
@@ -544,7 +603,7 @@ class AESStudent{
             'GAPPS'=>array(),
         );
         if(!empty($this->activity_info['GHSA_arts_participation'][$school_year])){
-            $participation['GHSA'] = $this->activity_info['GAPPS_arts_participation'][$school_year];
+            $participation['GHSA'] = $this->activity_info['GHSA_arts_participation'][$school_year];
         }
         if(!empty($this->activity_info['GAPPS_arts_participation'][$school_year])){
             $participation['GAPPS'] = $this->activity_info['GAPPS_arts_participation'][$school_year];

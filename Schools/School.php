@@ -18,7 +18,6 @@ class School{
     protected $Coaches = array();
     protected $Administrators = array();
     static $db_table = 'schools';
-    static $db_staff_xref = 'school_staff_xref';
     static $template = array('id'=>0,
                     'title'=>'',
                     'type'=>'',

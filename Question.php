@@ -26,6 +26,7 @@ class Question{
         'qset'=>null,
         'question'=>'',
         'answer_type'=>null,
+        'validation_type'=>null,
         'answers'=>'',
         'zorder'=>0,
     );
@@ -45,6 +46,10 @@ class Question{
 
     public function getAnswerType():?string{
         return $this->DATA['answer_type'];
+    }
+
+    public function getValidationType():?string{
+        return $this->DATA['validation_type'];
     }
 
     public function getTitle():string{
@@ -88,7 +93,7 @@ class Question{
 
 
     public function testAnswer(string|array $response):?bool{
-        
+        global $logger;
         $possibleAnswers = $this->getAnswers();
         $correctAnswers = array_filter($possibleAnswers, function($answer) {
                 return $answer['is_correct'];
@@ -97,7 +102,8 @@ class Question{
         if (empty($correctAnswers)) {
             return null;
         }
-        
+        $logger->debug('testAnswer: correctAnswers '.pa($correctAnswers,true));
+        $logger->debug('testAnswer: response '.pa($response,true));
         // CASE 1: Response is a string
         if (is_string($response)) {
             if (count($correctAnswers) == 1 && $response == reset($correctAnswers)['answer']) {
@@ -146,20 +152,19 @@ class Question{
 
     }
 
-    protected function prepareForSave(?array $data):?array{
-        $DATA = array(
-            'id'=>!empty($data['id'])?$data['id']:0,
-            'qset'=>!empty($data['qset'])?$data['qset']:NULL,
-            'question'=>!empty($data['question'])?$data['question']:'',
-            'answer_type'=>!empty($data['answer_type'])?$data['answer_type']:'',
-        );
-        $answers = !empty($data['test_answers'])?json_decode($data['test_answers']):array();
-        $DATA['answers'] = json_encode($answers);
-        if(empty($this->id)){
-            $zorder = $this->database->getResult('SELECT max(zorder) AS max FROM '.static::$db_table.' WHERE qset=:qset',array(':qset'=>$DATA['qset']));
-            $DATA['zorder'] = $zorder+1;
+    protected function prepareForSave(?array $data):null|bool|array{
+        
+        if(empty($data['question'])){
+            $this->addErrorMsg('No Question Set');
+            return false;
         }
-        return $DATA;
+        $answers = !empty($data['test_answers'])?json_decode($data['test_answers']):array();
+        $data['answers'] = json_encode($answers);
+        if(empty($this->id)){
+            $zorder = $this->database->getResult('SELECT max(zorder) AS max FROM '.static::$db_table.' WHERE qset=:qset',array(':qset'=>$data['qset']));
+            $data['zorder'] = $zorder+1;
+        }
+        return $data;
     }
 
     /** @return Question[] */

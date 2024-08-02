@@ -210,7 +210,17 @@ class AESStudent{
         $vital_info = $this->vital_info;
         foreach($vital_info AS $key=>$val){
             if(array_key_exists($key, $data) && !empty($data[$key]) && $data[$key] != $vital_info[$key]){
-                $vital_info[$key] = $data[$key];
+                if($key == 'date_of_birth'){
+                    try{
+                        $DateTime = new DateTimeImmutable($data[$key]);
+                        $vital_info[$key] = $DateTime->format('Y-m-d');
+                    }catch(\Exception $e){
+                        throw new \RuntimeException('Error: Birth Date must be in a valid format YYYY-MM-DD');
+                    }
+                }else{
+                    $vital_info[$key] = $data[$key];
+                }
+                
                 $this->has_changed = true;
             }
         }

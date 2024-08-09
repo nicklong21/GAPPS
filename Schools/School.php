@@ -50,6 +50,23 @@ class School{
         return $this->DATA;
     }
 
+    public function getWebsite():string{
+        return $this->DATA['website'];
+    }
+
+    public function getFormattedAddress():string{
+        $address = $this->DATA['address1'].'<br/>';
+        if(!empty($this->DATA['address2'])){
+            $address .= $this->DATA['address2'].'<br/>';
+        }
+        $address .= $this->DATA['city'].', '.(!empty($this->DATA['county'])?$this->DATA['county'].' ':'').'GA, '.$this->DATA['zip'];
+        return $address;
+    }
+
+    public function getPhone():string{
+        return $this->DATA['phone'];
+    }
+
     public function getStatus():?string{
         return $this->DATA['status'];
     }
@@ -98,7 +115,7 @@ class School{
                 }
             }
         }else{
-            $Staff[] = $this->Staff;
+            $Staff = $this->Staff;
         }
         return $Staff;
     }

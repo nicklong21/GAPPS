@@ -122,18 +122,26 @@ class Coach extends \ElevenFingersCore\Accounts\User{
         if($status != 'LOCKED'){
             $type = $this->getAccountTypeName();
             if($type == 'Coach'){
-                $certification_year = $this->getProfileValue('gapps-certification');
-                if(empty($certification_year) || $certification_year != $this->getSchoolYear()){
-                    $status = 'NOT APPROVED';
+                $status = $this->getCertificationStatus();
+            }
+        }
+        return $status;
+    }
+
+    public function getCertificationStatus():string{
+        $status = $this->DATA['status'];
+        if($status != 'LOCKED'){
+            $certification_year = $this->getProfileValue('gapps-certification');
+            if(empty($certification_year) || $certification_year != $this->getSchoolYear()){
+                $status = 'NOT APPROVED';
+            }else{
+                $certification_date = $this->getProfileValue('certification-date');
+                if(empty($certification_date)){
+                    $status = 'PENDING';
+                }elseif($this->DATA['status'] != 'Active'){
+                    $status = 'APPROVED';
                 }else{
-                    $certification_date = $this->getProfileValue('certification-date');
-                    if(empty($certification_date)){
-                        $status = 'PENDING';
-                    }elseif($this->DATA['status'] != 'Active'){
-                        $status = 'APPROVED';
-                    }else{
-                        $status = 'Active';
-                    }
+                    $status = 'Active';
                 }
             }
         }
@@ -240,7 +248,9 @@ class Coach extends \ElevenFingersCore\Accounts\User{
         $Coaches = array();
         if(!empty($data)){
             $filter['id'] = array('IN'=>$data);
-            $filter['usertype'] = array('!='=>17);
+            if(empty($filter['usertype'])){
+                $filter['usertype'] = array('!='=>17);
+            }
             $coach_data = $DB->getArrayListByKey(static::$table_name,$filter);
             foreach($coach_data as $coach){
                 $Coaches[] = new static($DB, null, $coach);
@@ -255,8 +265,10 @@ class Coach extends \ElevenFingersCore\Accounts\User{
      * @param mixed $filter
      * @return Coach[]
      */
-    static function getSportCoaches(DatabaseConnectorPDO $DB, int $sport_id, ?array $filter = array()):array{
-        $data = $DB->getResultListByKey(static::$db_sport_xref, array('sport_id'=>$sport_id),'coach_id');
+    static function getSportCoaches(DatabaseConnectorPDO $DB, int $sport_id, ?array $filter = array(), ?array $xref_filter = array()):array{
+        $xref_filter = $xref_filter?$xref_filter:array();
+        $xref_filter['sport_id'] = $sport_id;
+        $data = $DB->getResultListByKey(static::$db_sport_xref,$xref_filter,'coach_id');
         $Coaches = array();
         if(!empty($data)){
             $filter['id'] = array('IN'=>$data);

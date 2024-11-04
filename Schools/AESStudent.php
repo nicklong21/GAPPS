@@ -179,6 +179,17 @@ class AESStudent{
         return $this->submission_year;
     }
 
+    public function getStatus(string $submission_year):string{
+        $status = $this->DATA['status'];
+        $current_submission_year = $this->DATA['submission_year'];
+        if($status == 'ASSIGNED' || $status == 'APPROVED'){
+            if($current_submission_year < $submission_year){
+                $status = 'PENDING RENEWAL';
+            }
+        }
+        return $status;
+    }
+
     public function getDATA():array{
         $DATA = $this->DATA;
         $DATA['vital_info'] = $this->vital_info;
@@ -591,6 +602,20 @@ class AESStudent{
         }
         return  $success;
     } 
+
+    public function enrollStudentRecord(string $school_year):bool{
+        $EnrollmentYear = SchoolEnrollment::getDateTimeFromSchoolYear($school_year);
+
+        $insert = [
+            'school_id'=>$this->get('school_id'),
+            'school_year'=>$school_year,
+            'student_id'=>$this->get('student_id'),
+            'grade'=>$this->getGrade($EnrollmentYear),
+            'age'=>$this->getCurrentAge($EnrollmentYear),
+            'status'=>'ELIGIBLE',
+        ];
+        return $this->database->insertArray('school_enrollment', $insert,'id');
+    }
 
     public function getSportsSelections(string $school_year):array{
         

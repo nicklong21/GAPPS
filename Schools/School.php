@@ -3,39 +3,40 @@ namespace ElevenFingersCore\GAPPS\Schools;
 
 use ElevenFingersCore\Database\DatabaseConnectorPDO;
 use ElevenFingersCore\Utilities\MessageTrait;
-use ElevenFingersCore\Utilities\InitializeTrait;
+use ElevenFingersCore\GAPPS\InitializeTrait;
+use ElevenFingersCore\GAPPS\Sports\Seasons\SeasonFactory;
 use ElevenFingersCore\Utilities\SortableObject;
+use ElevenFingersCore\Utilities\UtilityFunctions;
 
 class School{
     use MessageTrait;
     use InitializeTrait;
-    protected $database;
-    protected $id = 0;
-    protected $DATA;
+
+    protected $school_year;
 
     protected $Staff;
     protected $Students = array();
+
+    protected $StudentFactory;
+
     protected $Coaches = array();
     protected $Administrators = array();
-    static $db_table = 'schools';
-    static $template = array('id'=>0,
-                    'title'=>'',
-                    'type'=>'',
-                    'address1'=>'',
-                    'address2'=>'',
-                    'city'=>'',
-                    'state'=>'',
-                    'zip'=>'',
-                    'phone'=>'',
-                    'website'=>'',
-                    'school_admin_account'=>0,
-                    'status'=>'',
-                    'qb_id'=>'',
-                );
 
-    function __construct(DatabaseConnectorPDO $DB, ?int $id = 0, ?array $DATA = array()){
-        $this->database = $DB;
-        $this->initialize($id,$DATA);
+
+    function __construct(array $DATA){
+        
+        $this->initialize($DATA);
+    }
+
+    function setSchoolYear(string $school_year){
+        $this->school_year = $school_year;
+    }
+
+    function getSchoolYear():?string{
+        if(empty($this->school_year)){
+            $this->school_year = UtilityFunctions::formatSchoolYear();
+        }
+        return $this->school_year;
     }
 
     public function getID():int{
@@ -71,20 +72,19 @@ class School{
         return $this->DATA['status'];
     }
     /** @return Student[] */
-    public function getEnrollment(?string $year = null, ?string $status = null):array{
+    public function getEnrollment(?string $grade = null, ?string $status = null):array{
         if(empty($this->Students)){
-            $Students = Student::getStudents($this->database, array('school_id'=>$this->id));
-            $Sortable = new SortableObject('getFullName');
-            $Sortable->Sort($Students);
-            $Sortable->setSortBy('getYearEntered9th');
+            $id = $this->getID();
+            $Students = $this->getStudentFactory()->getStudentsBySchoolID($id);
+            $Sortable = new SortableObject('getGrade');
             $Sortable->Sort($Students);
             $this->Students = $Students;
         }
         $Students = $this->Students;
-        if(!empty($year)){
+        if(!empty($grade)){
             $Filtered = array();
             foreach($Students AS $i=>$Student){
-                if($Student->getYearEntered9th() == $year){
+                if($Student->getGrade() == $grade){
                     $Filtered[] = $Student;
                 }
             }
@@ -99,11 +99,12 @@ class School{
             }
             $Students = $Filtered;
         }
-        return $this->Students;
+        return $Students;
     }
 
     /** @return Coach[] */
     public function getStaff(?string $type = null):array{
+        /*
         if(empty($this->Staff)){
             $this->Staff = Coach::getSchoolStaff($this->database,$this->getID(), array('status'=>'Active'));
         }
@@ -118,6 +119,8 @@ class School{
             $Staff = $this->Staff;
         }
         return $Staff;
+        */
+        return array();
     }
 
     /** @return mixed[Student[]] */
@@ -136,14 +139,16 @@ class School{
         return $EnrollmentByGrade;
     }
 
-    /** @return School[] */
-    public static function getSchools(DatabaseConnectorPDO $DB, ?array $filter = array(), null|string|array $order_by = null):array{
-        $data = $DB->getArrayListByKey(static::$db_table,$filter, $order_by);
-        $Schools = array();
-        foreach($data AS $d){
-            $Schools[] = new static($DB, null, $d);
-        }
-        return $Schools;
+    public function getEnrollmentYears():array{
+        return $this->getStudentFactory()->getEnrollmentYears($this->getID());
+    }
+
+    public function setStudentFactory(StudentFactory $studentFactory){
+        $this->StudentFactory = $studentFactory;
+    }
+    public function getStudentFactory():StudentFactory{
+        $this->StudentFactory->setSchoolYear($this->getSchoolYear());
+        return $this->StudentFactory;
     }
 
 }

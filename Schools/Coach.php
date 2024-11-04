@@ -6,12 +6,15 @@ use ElevenFingersCore\Accounts\UserProfile;
 use ElevenFingersCore\Database\DatabaseConnectorPDO;
 use ElevenFingersCore\GAPPS\Schools\School;
 use ElevenFingersCore\GAPPS\Sports\Sport;
+use ElevenFingersCore\GAPPS\Sports\SportFactory;
 use ElevenFingersCore\Utilities\UtilityFunctions;
 
 class Coach extends \ElevenFingersCore\Accounts\User{
 
     protected $School;
     protected $Sports;
+
+    protected $SportFactory;
 
     protected $Certification;
 
@@ -195,11 +198,23 @@ class Coach extends \ElevenFingersCore\Accounts\User{
                     $sports_ids[] = $s['sport_id'];
                 }
             }
-            $Sports = Sport::getSports($this->database, array('id'=>array('IN'=>$sports_ids)));
+            $SportFactory = $this->getSportFactory();
+            $Sports = $SportFactory->getSports(array('id'=>array('IN'=>$sports_ids)));
             $this->Sports = $Sports;
             }
     }
     return $this->Sports;
+    }
+
+    public function getSportFactory():SportFactory{
+        if(empty($this->SportFactory)){
+            $this->SportFactory = new SportFactory($this->database);
+        }
+        return $this->SportFactory;
+    }
+
+    public function setSportFactory(SportFactory $SportFactory){
+        $this->SportFactory = $SportFactory;
     }
 
     public function getSportsCoachedDATA():array{

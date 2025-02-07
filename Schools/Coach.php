@@ -12,7 +12,7 @@ use ElevenFingersCore\Utilities\UtilityFunctions;
 class Coach extends \ElevenFingersCore\Accounts\User{
 
     protected $School;
-    protected $Sports;
+    protected $sports_coached;
 
     protected $SportFactory;
 
@@ -131,6 +131,10 @@ class Coach extends \ElevenFingersCore\Accounts\User{
         return $status;
     }
 
+    public function getAccountStatus():string{
+        return $this->DATA['status'];
+    }
+
     public function getCertificationStatus():string{
         $status = $this->DATA['status'];
         if($status != 'LOCKED'){
@@ -156,18 +160,25 @@ class Coach extends \ElevenFingersCore\Accounts\User{
         return $Profile->getValue('is_lay_coach')?true:false;
     }
 
-    public function getSchool():School{
-        if(empty($this->School)){
-            $Profile = $this->getProfileObj();
-            $school_id = intval($Profile->getValue('school_id'));
-            $this->School = new School($this->database, $school_id);
+    public function getEmployeeStatus():string{
+        $Profile = $this->getProfileObj();
+        $lay_coach = $Profile->getValue('is_lay_coach');
+        switch($lay_coach){
+            case 2:
+                $re = 'Lay Coach - Certification Paid by School';
+            break;
+            case 1:
+                $re = 'Lay Coach - Certification Paid by Coach';
+            break;
+            case 0:
+            default:
+                $re = 'Full Time Employee';
+            break;
         }
-        return $this->School;
+        return $re;
     }
 
-    public function setSchool(School $School){
-        $this->School = $School;
-    }
+
 
     public function getSchoolID():?int{
         if(!empty($this->School)){
@@ -181,52 +192,19 @@ class Coach extends \ElevenFingersCore\Accounts\User{
         return $school_id;
     }
 
-    public function getSchoolName():string{
-        $School = $this->getSchool();
-        return $School->getTitle();
-    }
-
-    /** @return Sport[] */
-    public function getSports():array{
-        if(empty($this->Sports)){
-            $this->Sports = array();
-            $data = $this->getSportsCoachedDATA();
-            if(!empty($data)){
-            $sports_ids = array();
-            foreach($sports_ids AS $s){
-                if(!empty($s['sport_id'])){
-                    $sports_ids[] = $s['sport_id'];
-                }
-            }
-            $SportFactory = $this->getSportFactory();
-            $Sports = $SportFactory->getSports(array('id'=>array('IN'=>$sports_ids)));
-            $this->Sports = $Sports;
-            }
-    }
-    return $this->Sports;
-    }
-
-    public function getSportFactory():SportFactory{
-        if(empty($this->SportFactory)){
-            $this->SportFactory = new SportFactory($this->database);
-        }
-        return $this->SportFactory;
-    }
-
-    public function setSportFactory(SportFactory $SportFactory){
-        $this->SportFactory = $SportFactory;
-    }
 
     public function getSportsCoachedDATA():array{
-        $coached = $this->database->getArrayListByKey(static::$db_sport_xref,array('coach_id'=>$this->getID()));
-        return $coached;
+        if(empty($this->sports_coached)){
+            $this->sports_coached = $this->database->getArrayListByKey(static::$db_sport_xref,array('coach_id'=>$this->getID()));
+        }
+        return $this->sports_coached;
     }
 
     public function hasSport(int $sport_id):bool{
-        $Sports = $this->getSports();
+        $sports_coached = $this->getSportsCoachedDATA();
         $re = false;
-        foreach($Sports as $Sport){
-            if($Sport->getID() == $sport_id){
+        foreach($sports_coached as $sport){
+            if($sports_coached['sport_id'] == $sport_id){
                 $re = true;
                 break;  
             }
@@ -234,13 +212,18 @@ class Coach extends \ElevenFingersCore\Accounts\User{
         return $re;
     }
 
-    public function isHeadCoach():bool{
+    public function isHeadCoach(?int $sport_id = null):bool{
         $coached = $this->getSportsCoachedDATA();
         $is_head = false;
         foreach($coached AS $sport){
             if($sport['position'] == 'HC'){
-                $is_head = true;
-                break;
+                if(!empty($sport_id) && $sport['sport_id'] == $sport_id){
+                    $is_head = true;
+                    break;
+                }elseif(empty($sport_id)){
+                    $is_head = true;
+                    break;
+                }
             }
         }
         return $is_head;

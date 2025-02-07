@@ -95,7 +95,7 @@ class TeamFactory{
                 $school_id = $Team->getSchoolName();
             }
             if(!isset($allteams[$school_id])){
-                $Team->Delete();
+                $this->deleteTeam($Team);
                 unset($Teams[$i]);
             }else{
                 $this->saveTeam($Team, $allteams[$school_id]);

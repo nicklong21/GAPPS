@@ -133,6 +133,12 @@ class SeasonFactory{
         return $success;
     }
 
+    public function getSportSeasonForSchoolYear(int $sport_id, string $school_year):Season{
+        $data = $this->database->getArrayByKey($this->db_table,['year'=>$school_year,'sport_id'=>$sport_id]);
+        $Season = $this->getSeason(null, $data);
+        return $Season;
+    }
+
     public function getSeasonsForSchoolYear(string $school_year,null|string|array $group = null, null|string|array $age_group = null):array{
         $Sports = $this->SportFactory->getSports($group,$age_group);
         $Sports_by_id = [];

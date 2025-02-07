@@ -35,8 +35,12 @@ class SimplePage{
         $this->group = $group;
     }
 
-    public function getTitle():?string{
-        return $this->DATA['title'];
+    public function getTitle():string{
+        return $this->DATA['title']??'';
+    }
+
+    public function getText():string{
+        return $this->DATA['text']??'';
     }
 
     protected function prepareForSave(?array $DATA = null):?array{

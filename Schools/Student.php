@@ -17,9 +17,31 @@ class Student{
 
     protected $enrollment_status;
 
+    protected $enrollment_record_id;
+
+
     function __construct($DATA){
         $this->initialize($DATA);
         $this->school_id = $this->DATA['school_id']??0;
+    }
+
+    public function initialize(array $DATA)
+    {
+        
+        $this->DATA = array_merge($this->DATA,$DATA);
+        $this->id = $this->DATA['id']??0;
+
+        if(!empty($this->DATA['ignore_conflict'])){
+            if(is_string($this->DATA['ignore_conflict'])){
+                $this->DATA['ignore_conflict'] = json_decode($this->DATA['ignore_conflict']);
+            }elseif(is_array($DATA['ignore_conflict'])){
+                //
+            }else{
+                $this->DATA['ignore_conflict'] = [];
+            }
+        }else{
+            $this->DATA['ignore_conflict'] = [];
+        }
     }
 
     public function initializeEnrollment(array $DATA){
@@ -35,10 +57,14 @@ class Student{
             $status = $DATA['status'];
             $this->setStatus($status);
         }
+        $this->enrollment_record_id = $DATA['id']??null;
+        
     }
 
     public function getDATA():array{
-        return $this->DATA;
+        $DATA = $this->DATA;
+        $DATA['gender'] = $this->getGender();
+        return $DATA;
     }
 
     public function getID():int{
@@ -103,13 +129,19 @@ class Student{
     }
 
     public function getGender():string{
-        return $this->DATA['gender'];
+        $gender = $this->DATA['gender']??null;
+        if(is_string($gender) && strlen($gender) > 1){
+            $gender = substr($gender,0,1);
+        }
+        return $gender;
     }
 
     public function getDateofBirth(?string $format = null):null|string|DateTimeImmutable{
+        global $logger;
         $dob = $this->DATA['dob'];
         $BirthDate = null;
         if(!empty($dob)){
+            $BirthDate = new DateTimeImmutable($dob);
             try{
                 $BirthDate = new DateTimeImmutable($dob);
                 if(!empty($format)){
@@ -117,6 +149,7 @@ class Student{
                 }
             }catch(\Exception $e){
                 $this->addErrorMsg('Invalid Format for Date of Birth','Error',array('student_id'=>$this->id, 'dob'=>$dob));
+                $logger->debug('Invalid Format for Date of Birth',['student_id'=>$this->id, 'dob'=>$dob]);
             }
         }
         return $BirthDate;
@@ -172,6 +205,11 @@ class Student{
             $this->EnrollmentDate = new DateTimeImmutable($Y.'-09-01');
         }
         return $this->EnrollmentDate;
+    }
+
+
+    public function getEnrollmentRecordID():?int{
+        return $this->enrollment_record_id??null;
     }
 
 

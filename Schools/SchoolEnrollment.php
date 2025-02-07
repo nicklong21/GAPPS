@@ -47,7 +47,7 @@ class SchoolEnrollment{
             $student_data['age'] = (int)$age + 1;
 
             $grade = $Student->getGrade();
-            if($grade == 'PreK'){
+            if($grade == 'kindergarten'){
                 $grade = 1;
             }elseif($grade == 'Graduate'){
                 $grade = 13;
@@ -71,8 +71,35 @@ class SchoolEnrollment{
      * @return void
      */
     public function updateEnrollment(string $school_year, array $updated_students = []){
-        $Students = $this->getEnrolledStudents($school_year);
-        return $this->saveEnrollment($school_year, $Students,$updated_students);
+        $this->StudentFactory->setSchoolYear($school_year);
+        $updated_student_ids = [];
+        foreach($updated_students AS $student_data){
+            $student_id = $student_data['id']??0;
+            if($student_id && is_numeric($student_id)){
+                $updated_student_ids[] = $student_id;
+            }
+        }
+        $StudentsByID = [];
+        if(!empty($updated_student_ids)){
+            $Students = $this->StudentFactory->getStudentsByIds($updated_student_ids);
+            foreach($Students AS $Student){
+                $StudentsByID[$Student->getID()] = $Student;
+            }
+        }
+
+        foreach($updated_students AS $student_data){   
+            $student_id = (!empty($student_data['id']) && is_numeric($student_data['id']))?$student_data['id']:0;
+            if(isset($StudentsByID[$student_id])){
+                $Student = $StudentsByID[$student_id];
+            }else{
+                $Student = $this->StudentFactory->getStudent($student_id);
+            }
+            $student_data['school_id'] = $this->school_id;
+            if($Student->getID() || $student_data['status'] != 'REMOVED'){
+                $this->StudentFactory->saveStudent($Student,$student_data);
+                $this->StudentFactory->saveEnrollmentRecord($Student,$student_data);
+            }
+        }
     }
 
     /**
@@ -81,11 +108,13 @@ class SchoolEnrollment{
      * @param array $updated_students
      * @return void
      */
+    /*
     public function confirmEnrollment(string $school_year, array $updated_students = []){
         $previous_year = static::decrementSchoolYear($school_year);
         $Students = $this->getEnrolledStudents($previous_year);
         return $this->saveEnrollment($school_year, $Students,$updated_students);
     }
+    */
 
     /**
      * Summary of saveEnrollment
@@ -94,6 +123,7 @@ class SchoolEnrollment{
      * @param array $updated_students
      * @return void
      */
+    /*
     private function saveEnrollment(string $school_year, array $Students, array $updated_students){
 
         $this->StudentFactory->setSchoolYear($school_year);
@@ -140,7 +170,7 @@ class SchoolEnrollment{
             }
         }
     }
-
+    */
     
 
     /**
@@ -172,7 +202,7 @@ class SchoolEnrollment{
                 }
                 $student_data[] = $row;
             }
-            return $this->PreviewEnrollmentImport($school_year, $student_data);
+            return $this->previewEnrollmentImport($school_year, $student_data);
         }
     }
 
@@ -180,8 +210,9 @@ class SchoolEnrollment{
         return hash('sha256', $student_id.$salt);
     }
 
-    function PreviewEnrollmentImport(string $school_year, array $DATA){
-        global $debug;
+    private function previewEnrollmentImport(string $school_year, array $DATA){
+        global $debug, $logger;
+
         $this->StudentFactory->setSchoolYear($school_year);
         $previous_year = static::decrementSchoolYear($school_year);
         $Students = $this->getEnrolledStudents($previous_year);
@@ -195,7 +226,9 @@ class SchoolEnrollment{
         }
         $studentDataLookup = [];
         foreach($DATA AS $row){
-            $studentDataLookup[$row['lastname'].', '.$row['firstname']] = $this->StudentFactory->getStudent(null, $row);;
+            $NewStudent = $this->StudentFactory->getStudent(null, $row);
+            $NewStudent->setSchoolID($this->school_id);
+            $studentDataLookup[$row['lastname'].', '.$row['firstname']] = $NewStudent;
         }
         
         $enrollment = [];
@@ -203,7 +236,8 @@ class SchoolEnrollment{
             $dob = $Student->getDateofBirth();
             if(empty($dob)){
                 $student_row = $this->getStudentRow($Student);
-                $student_row['row_status'] = 'error';
+                $logger->debug('BAD DOB',['student'=>$student_row]);
+                $student_row['status'] = 'ERROR';
                 $student_row['error'] = 'dob';
                 unset($studentDataLookup[$full_name]);
             }
@@ -218,8 +252,11 @@ class SchoolEnrollment{
                 $conflict_entered_9 = $Conflict->getYearEntered9th();
                 if($student_data['dob'] != $conflict_dob ||
                     $student_data['entered9th'] != $conflict_entered_9){
-                        $student_data['conflict'] = $this->getStudentRow($Conflict);
-                        $student_data['row_status'] = 'conflict';
+                        $conflict_student_data = $this->getStudentRow($Conflict);
+                        $conflict_student_data['status'] = 'CONFLICT';
+                        $conflict_student_data['id'] = $student_data['id'];
+                        $enrollment[] = $conflict_student_data;
+                        $student_data['status'] = 'CONFLICT';
                         $debug[] = 'DATA Conflict';
                 }
                 unset($studentDataLookup[$full_name]);
@@ -237,11 +274,17 @@ class SchoolEnrollment{
     }
 
     private function getStudentRow(Student $Student):array{
+        global $logger;
         $student_data = $Student->getDATA();
+        $student_data['status'] = $Student->getStatus();
         $age = $Student->getCurrentAge();
         $student_data['age'] = (int) $age + 1;
+        if($age > 21 || $age < 5){
+            $student_data['status'] = 'ERROR';
+            $logger->debug('BAD AGE',['student'=>$student_data]);
+        }
         $grade = $Student->getGrade();
-        if($grade == 'PreK'){
+        if($grade == 'kindergarten'){
             $grade = 1;
         }elseif($grade == 'Graduate'){
             $grade = 13;
@@ -250,7 +293,9 @@ class SchoolEnrollment{
         }
         $student_data['grade'] = $grade;
         $student_data['dob'] = $Student->getDateofBirth('Y-m-d');
-        $student_data['status'] = $Student->getStatus();
+        if(empty($student_data['id'])){
+            $student_data['id'] = 'NEW-'.rand();
+        }
         return $student_data;
     }
 

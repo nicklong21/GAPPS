@@ -1,5 +1,5 @@
 <?php
-namespace ElevenFingersCore\GAPPS;
+namespace ElevenFingersCore\GAPPS\Reports;
 
 use ElevenFingersCore\Database\DatabaseConnectorPDO;
 use ElevenFingersCore\Export\Report;

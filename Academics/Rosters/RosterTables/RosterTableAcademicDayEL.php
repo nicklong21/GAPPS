@@ -8,7 +8,6 @@ class RosterTableAcademicDayEL extends RosterTableAcademicDayMS{
         'Unassigned'=>array(),
         'Math Bee'=>array(),
         'Quiz Bowl'=>array(),
-        'Science Fair'=>array(),
         'Spelling Bee'=>array(),
        );    
 }

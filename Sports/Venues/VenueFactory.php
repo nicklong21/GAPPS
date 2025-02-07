@@ -3,13 +3,14 @@ namespace ElevenFingersCore\GAPPS\Sports\Venues;
 use ElevenFingersCore\Database\DatabaseConnectorPDO;
 use ElevenFingersCore\GAPPS\FactoryTrait;
 use ElevenFingersCore\Utilities\MessageTrait;
+use ElevenFingersCore\GAPPS\ChangeLog;
 class VenueFactory{
     use MessageTrait;
     use FactoryTrait;
     protected $database;
     protected $db_table = 'venues';
     protected $db_xref = 'venues_sports';
-
+    protected $ChangeLogger;
     protected $init_event_ids = true;
     protected $schema = [
         'id'=>0,
@@ -29,6 +30,16 @@ class VenueFactory{
     function __construct(DatabaseConnectorPDO $DB){
         $this->database = $DB;
         $this->setItemClass(Venue::class);
+    }
+
+    public function setChangeLogger(ChangeLog $Logger){
+        $this->ChangeLogger = $Logger;
+    }
+
+    protected function addChangeLogRecord(string $type, int $record_id, string $value){
+        if(!empty($this->ChangeLogger)){
+            $this->ChangeLogger->addLog('Venues',$type,$record_id,$value);
+        }
     }
 
     public function getVenue(?int $id = null, ?array $DATA = array()):Venue{
@@ -131,6 +142,9 @@ class VenueFactory{
             $event_ids = $DATA['activity'];
             $this->updateVenueEvents($Venue,$event_ids);
         }
+        $change_type = $venue_id?'ALTER':'INSERT';
+        $change_value = $Venue->getTitle().' Record Changed';
+        $this->addChangeLogRecord($change_type,$Venue->getID(),$change_value);
         return true;
     }
 
@@ -150,6 +164,8 @@ class VenueFactory{
 
     public function deleteVenue(Venue $Venue):bool{
         $venue_id = $Venue->getID();
+        $change_value = $Venue->getTitle().' Record Deleted';
+        $this->addChangeLogRecord('DELETE',$Venue->getID(),$change_value);
         return $this->deleteItem($venue_id);
     }
 }

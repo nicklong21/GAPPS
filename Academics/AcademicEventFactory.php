@@ -33,7 +33,7 @@ class AcademicEventFactory extends SportFactory{
             $Sport = new $EventClass($event_data); 
             $RosterFactory = new RosterFactory($this->database, $dependencies);
             $Sport->setRosterFactory($RosterFactory);
-            $SeasonFactory = new SeasonFactory($this->database, $dependencies);
+            $SeasonFactory = $this->getSeasonFactory($event_slug);
             $Sport->setSeasonFactory($SeasonFactory);
         }else{
             throw new \RuntimeException('Invalid Event ID: '.$id);
@@ -49,10 +49,11 @@ class AcademicEventFactory extends SportFactory{
         return $this->getSportsByIDs($ids);
     }
 
-    public function getEvents(null|string|array $group = null, null|string|array $age_group = null, ?string $status = 'active'):array{
+    public function getEvents(null|string|array $group = null, null|string|array $age_group = null, null|string|array $semester = null, ?string $status = 'active'):array{
         if(empty($group)){
             $group = ['Academics','Fine Arts'];
         }
-        return $this->getSports($group,$age_group,$status);
+        
+        return $this->getSports($group,$age_group,$semester, $status);
     }
 }

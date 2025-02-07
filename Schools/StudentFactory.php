@@ -2,6 +2,7 @@
 namespace ElevenFingersCore\GAPPS\Schools;
 
 use DateTimeImmutable;
+use ElevenFingersCore\GAPPS\ChangeLog;
 use ElevenFingersCore\GAPPS\FactoryTrait;
 use ElevenFingersCore\Utilities\MessageTrait;
 use ElevenFingersCore\Database\DatabaseConnectorPDO;
@@ -18,6 +19,8 @@ class StudentFactory{
     protected $db_enrollment_table = 'school_enrollment';
 
     protected $batch_enrollment_init = false;
+
+    protected $ChangeLogger;
 
     protected $schema  = array(
         'id'=>0,
@@ -38,6 +41,7 @@ class StudentFactory{
         'entered9th'=>0,
         'date_created'=>null,
         'in_sport_roster'=>0,
+        'ignore_conflict'=>[],
    );
    protected $enrollment_schema = array(
         'id'=>0,
@@ -51,6 +55,16 @@ class StudentFactory{
     function __construct(DatabaseConnectorPDO $DB){
         $this->database = $DB;
         $this->setItemClass(Student::class);
+    }
+
+    public function setChangeLogger(ChangeLog $Logger){
+        $this->ChangeLogger = $Logger;
+    }
+
+    protected function addChangeLogRecord(string $table, string $type, int $record_id, string $value){
+        if(!empty($this->ChangeLogger)){
+            $this->ChangeLogger->addLog('Student Enrollment',$type,$record_id,$value);
+        }
     }
 
     public function setSchoolYear(?string $school_year){
@@ -174,43 +188,95 @@ class StudentFactory{
 
     public function saveStudent(Student $Student, Array $DATA):bool{
         $DATA['school_id'] = $Student->getSchoolID();
+        $change_type = $Student->getID()?'ALTER':'INSERT';
+        $original_dob = $Student->getDateofBirth('m/d/Y');
+        $original_name = $Student->getFullName();
+        $original_entered9th = $Student->getYearEntered9th();
+        if(array_key_exists('ignore_conflict', $DATA)){
+            if(!is_string($DATA['ignore_conflict'])){
+                $DATA['ignore_conflict'] = json_encode($DATA['ignore_conflict']);
+            }
+        }
         $insert = $this->saveItem($DATA, $Student->getID());
         $Student->initialize($insert);
+        if($change_type == 'INSERT'){
+            $change_value = $Student->getFullName().' Record: DOB: '.$Student->getDateofBirth('m/d/Y');
+            $this->addChangeLogRecord('Student Records',$change_type,$Student->getID(),$change_value);
+        }else{
+            $new_dob = $Student->getDateofBirth('m/d/Y');
+            $new_name = $Student->getFullName();
+            $new_entered9th = $Student->getYearEntered9th();
+            if($new_name !== $original_name){
+                $this->addChangeLogRecord('Student Records',$change_type, $Student->getID(),$new_name.' Student Record: Name changed from '.$original_name);
+            }
+            if($new_dob !== $original_dob){
+                $this->addChangeLogRecord('Student Records',$change_type,$Student->getID(),$new_name.' Student  Record: DOB Changed from '.$original_dob.' to '.$new_dob );
+            }
+            if($new_entered9th !== $original_entered9th){
+                $this->addChangeLogRecord('Student Records',$change_type,$Student->getID(),$new_name.' Student Record: Year Entered 9th Changed from '.$original_entered9th.' to '.$new_entered9th);
+            }
+        }
+        
+        
         return true;
     }
 
-    public function saveEnrollmentRecord(Student $Student, array $DATA, ?int $enrollment_record_id = 0){
-        $student_id = $Student->getID();
-        $enrollment_year = isset($DATA['school_year'])?$DATA['school_year']:null;
-        $grade = $DATA['grade']?? 0;
-        if($grade == 'PreK'){
-            $grade = 0;
-        }elseif($grade = 'Graduate'){
-            $grade = 13;
+    public function saveEnrollmentRecord(Student $Student, array $DATA){
+        $enrollment_record_id = $Student->getEnrollmentRecordID();
+        $current_status = $Student->getStatus();
+        $current_grade = $Student->getGrade();
+        $enrollment_year = $this->getSchoolYear();
+
+        $new_grade = $DATA['grade']?? 0;
+        if($new_grade == 'PreK'){
+            $new_grade = 0;
+        }elseif($new_grade == 'Graduate'){
+            $new_grade = 13;
         }
-        $enrollment_data = [];
-        if(!empty($enrollment_year) && empty($enrollment_record_id)){
-            $enrollment_data = $this->database->getArrayByKey($this->db_enrollment_table,['school_year'=>$enrollment_year,'student_id'=>$student_id]);
-        }else{
-            $enrollment_year = $this->getSchoolYear();
+
+        $enrollment_data = [
+            'id'=>$enrollment_record_id,
+            'student_id'=>$Student->getID(),
+            'school_id'=>$Student->getSchoolID(),
+            'school_year'=>$enrollment_year,
+            'status'=>$DATA['status'],
+        ];
+        switch($DATA['grade']){
+            case 'kindergarten':
+                $enrollment_data['grade'] = 0;
+            break;
+            case 'Graduate':
+                $enrollment_data['grade'] = 13;
+            break;
+            default:
+                $enrollment_data['grade'] = intval($DATA['grade']);
         }
-        if(empty($enrollment_data)){
-            $enrollment_data['id'] = $enrollment_record_id;
-            $enrollment_data['student_id'] = $student_id;
-            $enrollment_data['school_id'] = $Student->getSchoolID();
-            $enrollment_data['school_year'] = $enrollment_year;
-        }
-        $enrollment_data['grade'] = $DATA['grade'];
-        $enrollment_data['status'] = $DATA['status'];
+        
         $this->database->insertArray($this->db_enrollment_table,$enrollment_data,'id');
         $Student->initializeEnrollment($enrollment_data);
+        
+        if(!empty($enrollment_record_id)){
+            $change_type = 'ALTER';
+            if($current_grade != $enrollment_data['grade']){
+                $this->addChangeLogRecord('Enrollment Records',$change_type,$enrollment_data['id'],$Student->getFullName().' Enrollment Record Changed: Grade changed to '.$enrollment_data['grade'].' from '.$current_grade.' for '.$enrollment_year);
+            }
+            if($enrollment_data['status'] != $current_status){
+                $this->addChangeLogRecord('Enrollment Records',$change_type,$enrollment_data['id'],$Student->getFullName().' Enrollment Record Changed: Status changed to '.$DATA['status'].' for '.$enrollment_year);
+            }
+        }else{
+            $change_type = 'INSERT';
+            $change_value = $Student->getFullName().' Enrollment Record Created: Grade '.$enrollment_data['grade'].' '.$enrollment_year.' '.$enrollment_data['status'];
+            $this->addChangeLogRecord('Enrollment Records',$change_type,$enrollment_data['id'],$change_value);
+        }
     }
+
 
     public function deleteStudent(Student $Student):bool{
         $id = $Student->getID();
         $success = $this->deleteItem($id);
         if($success){
             $success = $this->database->deleteByKey($this->db_enrollment_table,['student_id'=>$id]);
+            $this->addChangeLogRecord('Student Records','DELETE',$id,$Student->getFullName().' Student Record Deleted');
         }
         return $success;
     }

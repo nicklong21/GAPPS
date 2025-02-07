@@ -1,6 +1,6 @@
 <?php
 namespace ElevenFingersCore\GAPPS\Sports\Rosters;
-
+use ElevenFingersCore\GAPPS\ChangeLog;
 use ElevenFingersCore\Database\DatabaseConnectorPDO;
 use ElevenFingersCore\GAPPS\FactoryTrait;
 use ElevenFingersCore\GAPPS\Schools\School;
@@ -11,6 +11,8 @@ class RosterStudentFactory{
     use FactoryTrait;
     use MessageTrait;
     protected $dependencies;
+
+    protected $ChangeLogger;
     protected $db_table = 'rosters_students';
     protected $schema = [
         'id' => 0,
@@ -37,17 +39,31 @@ class RosterStudentFactory{
         $this->setItemClass($dependencies['roster_student']);
     }
 
+    public function setChangeLogger(ChangeLog $Logger){
+        $this->ChangeLogger = $Logger;
+    }
+
+    protected function addChangeLogRecord(string $type, int $record_id, string $value){
+        if(!empty($this->ChangeLogger)){
+            $prepend_value = $this->ChangeLogger->getLogValue();
+            $value = $prepend_value.': '.$value;
+            $this->ChangeLogger->addLog('Roster Student Record',$type,$record_id,$value);
+        }
+    }
+
     public function getRosterStudent(?int $id = 0, ?array $DATA = array()):RosterStudent{
         $RosterStudent = $this->getItem($id, $DATA);
         return $RosterStudent;
     }
 
     public function getRosterStudents(int $roster_id):array{
-        $filter = array('roster_id'=>$roster_id);
-        $roster_student_data = $this->database->getArrayListByKey($this->db_table, $filter,['lastname','firstname']);
         $RosterStudents = [];
-        foreach($roster_student_data AS $DATA){
-            $RosterStudents[] = $this->getRosterStudent(null, $DATA);
+        if(!empty($roster_id)){
+            $filter = array('roster_id'=>$roster_id);
+            $roster_student_data = $this->database->getArrayListByKey($this->db_table, $filter,['lastname','firstname']);
+            foreach($roster_student_data AS $DATA){
+                $RosterStudents[] = $this->getRosterStudent(null, $DATA);
+            }
         }
         return $RosterStudents;
     }
@@ -75,6 +91,7 @@ class RosterStudentFactory{
     public function updateRosterStudents(int $roster_id, $data, StudentFactory $studentFactory):bool{
         $RosterStudents = $this->getRosterStudents($roster_id);
         $any_error = false;
+        /** @var RosterStudent $RosterStudent */
         foreach($RosterStudents AS $RosterStudent){
             $student_id = $RosterStudent->getStudentID();
             if(isset($data[$student_id])){
@@ -113,13 +130,29 @@ class RosterStudentFactory{
     }
 
     public function saveRosterStudent(RosterStudent $RosterStudent, array $DATA):bool{
+        global $logger;
         $id = $RosterStudent->getID();
+        $student_id = $RosterStudent->getStudentID();
+        $jersey_number = $RosterStudent->getDataValue('jersey_number');
+        $is_jv = $RosterStudent->getDataValue('is_jv');
         $insert = $this->saveItem($DATA, $id);
         $RosterStudent->initialize($insert);
+        $change_type = $id?'ALTER':'INSERT';
+        $change_value = $RosterStudent->getName().' Record '.($id?'Updated':'Added');
+        if($change_type == 'ALTER'){
+            if($student_id != $DATA['student_id'] || $jersey_number != $DATA['jersey_number'] || $is_jv != $DATA['is_jv']){
+                $this->addChangeLogRecord($change_type,$RosterStudent->getID(),$change_value);
+            }
+        }else{
+            $this->addChangeLogRecord($change_type,$RosterStudent->getID(),$change_value);
+        }
+        
+       
         return true;
     }
 
     public function deleteRosterStudent(RosterStudent $RosterStudent):bool{
+        $this->addChangeLogRecord('DELETE',$RosterStudent->getID(),$RosterStudent->getName().' Record Deleted');
         return $this->deleteItem($RosterStudent->getID());
     }
 

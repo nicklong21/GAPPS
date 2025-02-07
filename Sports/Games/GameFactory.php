@@ -112,12 +112,12 @@ class GameFactory{
         return $Games;
     }
 
-    public function getSchoolGames(int $school_id){
+    public function getSchoolGames(int $school_id, array $filter = array()){
         $SchoolGames = [];
         $TeamFactory = $this->getTeamFactory();
         $game_ids = $TeamFactory->getGameIDsBySchool($school_id,$this->getSeasonID());
         if(!empty($game_ids)){
-            $SeasonGames = $this->getGames();
+            $SeasonGames = $this->getGames($filter);
             foreach($SeasonGames AS $Game){
                 if(in_array($Game->getID(),$game_ids)){
                     $SchoolGames[] = $Game;

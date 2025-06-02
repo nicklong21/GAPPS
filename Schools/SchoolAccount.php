@@ -1,6 +1,7 @@
 <?php
 namespace ElevenFingersCore\GAPPS\Schools;
 
+use ElevenFingersCore\Database\DatabaseConnectorPDO;
 
 class SchoolAccount extends \ElevenFingersCore\Accounts\User{
 
@@ -17,6 +18,23 @@ class SchoolAccount extends \ElevenFingersCore\Accounts\User{
         $Profile = $this->getProfileObj();
         $Profile->Save($DATA);
         return $re;
+    }
+
+    public static function fetchAccountFromSchoolID(DatabaseConnectorPDO $DB, int $school_id){
+        $acct_ids = $DB->getResultListByKey('account_profile',['field'=>'school_id','value'=>$school_id],'acct_id');
+        if(!empty($acct_ids)){
+            $data_row = $DB->getArrayByKey('accounts',['id'=>['IN'=>$acct_ids],'usertype'=>17]);
+        }else{
+            $data_row = [];
+        }
+        
+        
+        return new SchoolAccount($DB, null, $data_row);
+    }
+
+    public function getOpenPassword():?string{
+        $password = $this->database->getResultByKey('account_profile',['acct_id'=>$this->getID(),'field'=>'open_pass'],'value');
+        return $password;
     }
     
 }

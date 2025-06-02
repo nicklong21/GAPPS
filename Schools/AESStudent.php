@@ -502,20 +502,20 @@ class AESStudent{
         return $success;
     }
 
-    public function rejectStudentRecord():bool{
+    public function rejectStudentRecord(string $school_year):bool{
         if($this->DATA['student_id']){
+            $student_id = $this->DATA['student_id'];
             $school_id = $this->DATA['school_id'];
             $update = array(
-                'id'=>$this->DATA['student_id'],
+                'id'=>$student_id,
                 'school_id'=>0,
                 'status'=>'REMOVED',
                 'aes_status'=>'Not Approved',
             );
             $this->database->insertArray('students',$update,'id');
             if($school_id){
-                $sql = 'DELETE FROM school_students WHERE school_id = :school_id AND student_id = :student_id';
-                $params = array(':school_id'=>$school_id, ':student_id'=>$this->DATA['student_id']);
-                $this->database->query($sql,$params);
+                $params = ['student_id'=>$student_id,'school_id'=>$school_id,'school_year'=>$school_year];
+                $this->database->deleteByKey('school_enrollment',$params);
             }
         }
         return true;
@@ -533,11 +533,6 @@ class AESStudent{
                 $update = array('id'=>$student_id,'school_id'=>0,);
                 $success = $this->database->insertArray('students',$update,'id');
                 $school_id = $this->get('school_id');
-                if($school_id){
-                    $sql = 'DELETE FROM school_students WHERE school_id = :school_id AND student_id = :student_id';
-                    $params = array(':school_id'=>$school_id, ':student_id'=>$student_id);
-                    $this->database->query($sql,$params);
-                }
             }
         }
         if($success){
@@ -574,24 +569,7 @@ class AESStudent{
         $student_id = $student_record['id'];
         $status = $student_record['status'];
         $school_id = $student_record['school_id'];
-        /*
-        $sql = 'INSERT INTO school_students (school_id, student_id, status) VALUES (:school_id, :student_id, :status) ON DUPLICATE KEY UPDATE status = VALUES(status)';
-        $params = array(':school_id'=>$school_id,':student_id'=>$student_id,':status'=>$status);
-        $this->database->query($sql,$params);
-        */
-        $xref_id = $this->database->getResultByKey('school_students',array('school_id'=>$school_id,'student_id'=>$student_id),'id');
-        $insert = array(
-            'id'=>$xref_id,
-            'student_id'=>$student_id,
-            'school_id'=>$school_id,
-            'status'=>$status,
-        );
-        $this->database->insertArray('school_students',$insert, 'id');
-        /*
-        $Student = new Student($this->database,$DATA['student_id']);
-        $Student->Save($student_record);
-        $student_id = $Student->getID();
-        */
+        
         if($success){
             $student_id = $student_record['id'];
             $insert = array('id'=>$this->id,'student_id'=>$student_id);
@@ -603,18 +581,24 @@ class AESStudent{
         return  $success;
     } 
 
-    public function enrollStudentRecord(string $school_year):bool{
-        $EnrollmentYear = SchoolEnrollment::getDateTimeFromSchoolYear($school_year);
-
-        $insert = [
-            'school_id'=>$this->get('school_id'),
-            'school_year'=>$school_year,
-            'student_id'=>$this->get('student_id'),
-            'grade'=>$this->getGrade($EnrollmentYear),
-            'age'=>$this->getCurrentAge($EnrollmentYear),
-            'status'=>'ELIGIBLE',
-        ];
-        return $this->database->insertArray('school_enrollment', $insert,'id');
+    public function convertToStudent():bool{
+        $success = false;
+        $student_id = $this->getStudentRecordID();
+        if(!empty($student_id)){
+            $school_id = $this->getEnrolledSchoolID();
+            if(!empty($school_id)){
+                $update = ['id'=>$student_id, 'is_aes'=>'No'];
+                $this->database->insertArray('students',$update,'id');
+                $update = ['id'=>$this->getID(),'status'=>'ENROLLED'];
+                $this->database->insertArray(static::$db_table,$update,'id');
+                $success = true;
+            }else{
+                $this->addErrorMsg('Student is not assigned to a school');
+            }
+        }else{
+            $this->addErrorMsg('Student Record not found');
+        }
+        return $success;
     }
 
     public function getSportsSelections(string $school_year):array{
@@ -659,6 +643,14 @@ class AESStudent{
     public static function getSubmissionYears(DatabaseConnectorPDO $DB) :array{
         $years = $DB->getResultList('SELECT DISTINCT submission_year AS year FROM '.static::$db_table.' ORDER BY submission_year DESC');
         return $years;
+    }
+
+    public function getStudentRecordID():?int{
+        return $this->DATA['student_id'];
+    }
+
+    public function getEnrolledSchoolID():?int{
+        return $this->DATA['school_id'];
     }
 
 

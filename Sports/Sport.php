@@ -11,9 +11,11 @@ class Sport{
     use MessageTrait;
     use InitializeTrait;
     protected $Seasons = array();
-    private $GameFactory;
-    private $RosterFactory;
-    private $SeasonFactory;
+    protected $GameFactory;
+    protected $RosterFactory;
+    protected $SeasonFactory;
+
+    protected $pitch_count = false;
 
     function __construct(array $DATA = array()){
         $this->initialize($DATA);
@@ -27,8 +29,8 @@ class Sport{
         return $this->id;
     }
 
-    public function getTitle():?string{
-        return $this->DATA['title'];
+    public function getTitle():string{
+        return $this->DATA['title']??'';
     }
 
     public function getActvityType():?string{
@@ -61,6 +63,26 @@ class Sport{
 
     public function getSlug():?string{
         return $this->DATA['slug'];
+    }
+
+    public function getCategory():string{
+        return $this->DATA['category']??$this->getTitle();
+    }
+
+    public function getSubCategoryTitle():string{
+        return $this->DATA['sub_category_title']??$this->getTitle();
+    }
+
+    public function isMaxPrepSport():bool{
+        return $this->DATA['maxpreps_stats']?true:false;
+    }
+
+    public function getParticipatingSchoolsLabel():string{
+        return $this->DATA['participating_label']??'Participating Schools';
+    }
+
+    public function usePitchCount():bool{
+        return $this->pitch_count;
     }
 
     public function getCurrentSeason():Season{
@@ -120,6 +142,8 @@ class Sport{
     }
 
     public function getSeasonFactory():SeasonFactory{
+        $SeasonFactory = $this->SeasonFactory;
+        $SeasonFactory->setSports($this);
         return $this->SeasonFactory;
     }
     public function setSeasonFactory(SeasonFactory $Factory){

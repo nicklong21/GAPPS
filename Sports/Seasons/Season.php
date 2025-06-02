@@ -91,6 +91,14 @@ class Season{
         return $this->Schools;
     }
 
+    public function getSchoolIDsByDivision(int $division_id):array{
+        return $this->getSeasonSchoolFactory()->getSchoolIDsByDivision($division_id);
+    }
+
+    public function getSchoolIDsByRegion(int $region_id):array{
+        return $this->getSeasonSchoolFactory()->getSchoolIDsByRegion($region_id);
+    }
+
     public function getRoster(?int $id = 0):Roster{
         $RosterFactory = $this->getSport()->getRosterFactory();
         $Roster = $RosterFactory->getRoster($id);

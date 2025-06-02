@@ -16,18 +16,16 @@ class RosterTableLiterary extends RosterTableGroups{
         'Dramatic Interpretation'=>array(),
         'Humorous Interpretation'=>array(),
         'Impromptu'=>array(),
-        'Informative Speech'=>array(),
         'Duo Interpretation (2 names)'=>array(),
-        'Argumentative Essay'=>array(),
-        'Personal Essay'=>array(),
-        'Persuasuve Speech'=>array(),
-        'Rhetorical Analysis Essay'=>array(),
-        'Spelling'=>array(),
         'Piano'=>array(),
         'Girls Solo'=>array(),
         'Boys Solo'=>array(),
-        'Girls Trio (3 names)'=>array(),
+        'Girls Trio'=>array(),
         'Quartet (4 names)'=>array(),
+        'Instrumental (Strings)'=>array(),
+        'Instrumental (Brass)'=>array(),
+        'Instrumental (Woodwinds)'=>array(),
+
     );
 
     protected $html_table_labels = array(

@@ -54,6 +54,10 @@ class Roster{
         return $this->DATA['status']??'';
     }
 
+    public function getNotes():string{
+        return $this->DATA['notes']??'';
+    }
+
     /** @return RosterStudent[] */
     public function getRosterStudents():array{
         if(empty($this->RosterStudents)){

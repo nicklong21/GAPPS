@@ -15,6 +15,7 @@ class RosterFactory{
         'school_id'=>0,
         'title'=>'',
         'status'=>NULL,
+        'notes'=>'',
     ];
 
     function __construct(DatabaseConnectorPDO $DB, array $dependencies){

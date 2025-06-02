@@ -25,12 +25,12 @@ class ReportSchoolEnrollment extends Report{
         }
         $schools = $this->database->getResultListByKey('schools',$school_param,'title','id');
         $school_ids = array_keys($schools);
-        asort($schools);
+        //asort($schools);
         $grades = [];
-        $grade = $this->start_grade;
-        while($grade <= $this->end_grade){
+        $grade = $this->end_grade;
+        while($grade >= $this->start_grade){
             $grades[] = $grade;
-            $grade++;
+            $grade--;
         }
         if(!empty($grades) && !empty($school_ids)){
             $enrollment_args = ['grade'=>['IN'=>$grades],'school_year'=>$this->school_year];
@@ -38,13 +38,13 @@ class ReportSchoolEnrollment extends Report{
                 $school_id = current($school_ids);
                 $enrollment_args['school_id'] = $school_id;
             }
-
-            $enrollment = $this->database->getArrayListByKey('school_enrollment',$enrollment_args,'grade',['key_name'=>'student_id']);
+            $enrollment_args['status'] = ['!='=>'REMOVED'];
+            $enrollment = $this->database->getArrayListByKey('school_enrollment',$enrollment_args,'grade DESC',['key_name'=>'student_id']);
             $student_ids = array_keys($enrollment);
-            $students = $this->database->getArrayListByKey('students',['id'=>['IN'=>$student_ids]],['firstname','lastname'],['key_name'=>'id']);
+            $students = $this->database->getArrayListByKey('students',['id'=>['IN'=>$student_ids]],['lastname','firstname'],['key_name'=>'id']);
 
             foreach($schools AS $school_id=>$school_title){
-                $enrollment_by_school[$school_id] = ['title'=>$school_title,'enrollment_by_grade'=>[]];
+                $enrollment_by_school[$school_id] = ['title'=>$school_title,'enrollment_by_grade'=>array_fill_keys($grades,[])];
             }
             foreach($students AS $student){
                 $student_id = $student['id'];
@@ -54,11 +54,15 @@ class ReportSchoolEnrollment extends Report{
                 if(empty($enrollment_by_school[$school_id]['enrollment_by_grade'][$grade])){
                     $enrollment_by_school[$school_id]['enrollment_by_grade'][$grade] = [];
                 }
+                $gender = $student['gender']??null;
+                if(is_string($gender) && strlen($gender) > 1){
+                    $gender = substr($gender,0,1);
+                }
                 $enrollment_by_school[$school_id]['enrollment_by_grade'][$grade][] = [
                     'lastname'=>$student['lastname'],
                     'firstname'=>$student['firstname'],
                     'dob'=>$student['dob'],
-                    'gender'=>$student['gender']
+                    'gender'=>$gender
                 ];
             }
             
@@ -77,7 +81,8 @@ class ReportSchoolEnrollment extends Report{
             
             $html .= '<tr><th>'.$school['title'].'</th><td colspan="4"></td></tr>';
             foreach($school['enrollment_by_grade'] AS $grade=>$students){
-            $html .= '<tr><th>&nbsp;</th><th>GRADE '.$grade.'</th><td colspan="3"></td></tr>';    
+                $grade_label = ($grade === 0)?'KINDERGARTEN':'GRADE '.$grade;
+            $html .= '<tr><th>&nbsp;</th><th>'.$grade_label.'</th><td colspan="3"></td></tr>';    
     
             foreach($students AS $student){
                 $html .= '<tr><td></td><td>'.$student['lastname'].'</td><td>'.$student['firstname'].'</td><td>'.$student['dob'].'</td><td>'.$student['gender'].'</td></tr>';
@@ -129,11 +134,13 @@ class ReportSchoolEnrollment extends Report{
                      ->getCell('A'.$j)->setValue($school['title']);
              $j++;
              foreach($school['enrollment_by_grade'] AS $grade=>$students){
+                $grade_label = ($grade === 0)?'KINDERGARTEN':'GRADE '.$grade;
              $spreadsheet->getActiveSheet()
-                     ->getCell('B'.$j)->setValue($grade);
+                     ->getCell('B'.$j)->setValue($grade_label);
              $j++;    
              
              foreach($students AS $student){
+                
                  $spreadsheet->getActiveSheet()
                          ->getCell('B'.$j)->setValue($student['lastname']);
                  $spreadsheet->getActiveSheet()

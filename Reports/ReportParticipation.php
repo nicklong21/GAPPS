@@ -23,7 +23,9 @@ class ReportParticipation extends Report{
     
     function generateReport(){
         
-
+        $sports_ordered = $this->database->getResultArrayList('SELECT * FROM sports ORDER BY FIELD(agroup, "Sports", "Academics", "Fine Arts" ), FIELD(zgroup, "High School", "Middle School", "Elementary"), title;',[],'id');
+        $sport_order_index = array_keys($sports_ordered);
+        
         $seasons_by_id = $this->database->getArrayListByKey('sports_seasons',['year'=>$this->season_year],'id',['key_name'=>'id']);
 
         $season_ids = array_keys($seasons_by_id);
@@ -31,10 +33,13 @@ class ReportParticipation extends Report{
         if(!empty($this->school_id)){
             $school_param = ['id'=>$this->school_id];
         }
+        
+
         $schools = $this->database->getArrayListByKey('schools',$school_param,'title',['key_name'=>'id']);
         $school_ids = array_keys($schools);
 
         if(!empty($school_ids) && !empty($season_ids)){
+
             $school_seasons = $this->database->getArrayListByKey('school_seasons',['school_id'=>['IN'=>$school_ids],'season_id'=>['IN'=>$season_ids]]);
 
             foreach($school_seasons AS $sch_season){
@@ -43,10 +48,12 @@ class ReportParticipation extends Report{
                 $season = $seasons_by_id[$season_id];
                 if(empty($schools[$school_id]['seasons'])){
                     $schools[$school_id]['seasons'] = [];
-                }
-                $schools[$school_id]['seasons'][$season_id] = ['title'=>$season['title'],'status'=>$sch_season['status'],'participating'=>0,'participating_jv'=>0,];
+                }$sport = $sports_ordered[$season['sport_id']];
+                $schools[$school_id]['seasons'][$season_id] = ['sport_id'=>$sport['id'],'title'=>$sport['title'],'semester'=>$sport['type'],'group'=>$sport['zgroup'],  'status'=>$sch_season['status'],'participating'=>0,'participating_jv'=>0,];
                 $schools[$school_id]['total_participation'] = 0;
                 $schools[$school_id]['total_jv_participation'] = 0;
+                $schools[$school_id]['participating_students'] = [];
+                $schools[$school_id]['participating_jv_students'] = [];
             }
             
             $rosters = $this->database->getArrayListByKey('rosters',['school_id'=>['IN'=>$school_ids],'season_id'=>['IN'=>$season_ids]],'id',['key_name'=>'id']);
@@ -60,6 +67,7 @@ class ReportParticipation extends Report{
                     $roster = $rosters[$roster_id];
                     $school_id = $roster['school_id'];
                     $season_id = $roster['season_id'];
+                    $student_id = $student['student_id'];
                     if(empty($schools[$school_id]['total_participation'])){
                         $schools[$school_id]['total_participation'] = 0;
                         $schools[$school_id]['total_jv_participation'] = 0;
@@ -70,13 +78,31 @@ class ReportParticipation extends Report{
                         $schools[$school_id]['seasons'][$season_id]['participating_jv'] = 0;
                     }
                     $schools[$school_id]['seasons'][$season_id]['participating']++;
+                    if(!in_array($student_id,$schools[$school_id]['participating_students'])){
+                        $schools[$school_id]['participating_students'][] = $student_id;
+                    }
                     if($is_jv){
                         $schools[$school_id]['seasons'][$season_id]['participating_jv']++;
                         $schools[$school_id]['total_jv_participation']++;
+                        if(!in_array($student_id,$schools[$school_id]['participating_jv_students'])){
+                            $schools[$school_id]['participating_jv_students'][] = $student_id;
+                        }
                     }
                 }
             }
         }
+
+        // Sort 'seasons' array for each school by sport_id order
+        foreach ($schools as $school_id => &$school) {
+            if (!empty($school['seasons'])) {
+                uasort($school['seasons'], function ($a, $b) use ($sport_order_index) {
+                    return array_search($a['sport_id'], $sport_order_index) - array_search($b['sport_id'], $sport_order_index);
+                });
+            }
+        }
+    
+
+
         $this->DATA = $schools;
         $this->title = $this->season_year.' School Participation';
     }
@@ -96,9 +122,10 @@ class ReportParticipation extends Report{
             foreach($school['seasons'] AS $season){
                 $participating = $season['participating']??0;
                 $participating_jv = $season['participating_jv']??0;
-                $html .= '<tr><td></td><td>'.$season['title'].' - <em>'.$season['status'].'</em></td><td>'.$participating.'</td><td>'.$participating_jv.'</td></tr>';
+                $html .= '<tr><td></td><td>'.$season['title'].' - <em>'.$season['group'].'</em></td><td>'.$participating.'</td><td>'.$participating_jv.'</td></tr>';
             }
             $html .= '<tr><td></td><td><strong>Participation Total:</strong></td><td><strong>'.$school['total_participation'].'</strong></td><td><strong>'.$school['total_jv_participation'].'</strong></td></tr>';
+            $html .= '<tr><td></td><td><strong>Participating Students:</strong></td><td><strong>'.count($school['participating_students']).'</strong></td><td><strong>'.count($school['participating_jv_students']).'</strong></td></tr>';
 
             $html .= '<tr><td colspan="4"><hr/></td></tr>';
         }
@@ -174,6 +201,18 @@ class ReportParticipation extends Report{
             $spreadsheet->getActiveSheet()
                         ->getStyle('E'.$j)->applyFromArray($total_style);
             $j++;
+
+            $spreadsheet->getActiveSheet()
+                        ->getCell('B'.$j)->setValue('Participating Students::');
+            $spreadsheet->getActiveSheet()
+                        ->getCell('D'.$j)->setValue(count($school['participating_students']));
+            $spreadsheet->getActiveSheet()
+                        ->getStyle('D'.$j)->applyFromArray($total_style);
+            $spreadsheet->getActiveSheet()
+                        ->getCell('E'.$j)->setValue(count($school['participating_jv_students']));
+            $spreadsheet->getActiveSheet()
+                        ->getStyle('E'.$j)->applyFromArray($total_style);
+
             
         }
     $spreadsheet->getActiveSheet()->getColumnDimension('A')->setAutoSize(true);

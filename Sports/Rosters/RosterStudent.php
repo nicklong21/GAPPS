@@ -7,6 +7,7 @@ use ElevenFingersCore\Utilities\MessageTrait;
 use ElevenFingersCore\GAPPS\InitializeTrait;
 use ElevenFingersCore\GAPPS\Schools\Student;
 use ElevenFingersCore\GAPPS\Schools\StudentFactory;
+use ElevenFingersCore\GAPPS\Sports\Rosters\RosterStudentDependencies\RosterStudentDependency;
 
 class RosterStudent
 {
@@ -14,6 +15,8 @@ class RosterStudent
     use InitializeTrait;
     protected $Student;
     protected $StudentFactory;
+
+    protected $dependency_list = [];
 
     function __construct(array $DATA)
     {
@@ -50,6 +53,14 @@ class RosterStudent
     public function getName(){
         $name = $this->DATA['lastname'].', '.$this->DATA['firstname'];
         return $name;
+    }
+
+    public function getDependencyList():array{
+        return $this->dependency_list;
+    }
+
+    public function setDependency(string $type, RosterStudentDependency $Dependency){
+        
     }
 
     public function initializeFromStudent(Student $Student){

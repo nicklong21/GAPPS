@@ -71,13 +71,18 @@ class TeamFactory{
     }
 
     public function saveGameTeams(Game $Game, array $DATA):bool{
+        global $debug;
         $season_id = $Game->getSeasonID();
         $game_id = $Game->getID();
-        $hometeams_jsonstr = $data['hometeams']??array();
-        $awayteams_jsonstr = $data['awayteams']??array();
+        $hometeams_jsonstr = $DATA['hometeams']??array();
+        $awayteams_jsonstr = $DATA['awayteams']??array();
         $allteams = array();
+        $debug[] = 'saveGameTeams';
+        $debug[] = $hometeams_jsonstr;
+        $debug[] = $awayteams_jsonstr;
         foreach($hometeams_jsonstr AS $str){
             $team_data = json_decode($str,true);
+            $debug[] = $team_data;
             $team_data['type'] = 'hometeam';
             $school_id = $team_data['school_id']??$team_data['school_name'];
             $allteams[$school_id] = $team_data;
@@ -119,6 +124,22 @@ class TeamFactory{
         $insert = $this->saveItem($DATA, $Team->getID());
         $Team->initialize($insert);
         return true;
+    }
+
+    public function deleteGameTeams(int $game_id):bool{
+        $success = false;
+        if($game_id){
+            $Teams = $this->getTeamsByGameID($game_id);
+            foreach($Teams AS $Team){
+                $success = $this->deleteTeam($Team);
+                if(!$success){
+                    break;
+                }
+            }
+        }else{
+            $this->addErrorMsg('Invalid Game ID');
+        }
+        return $success;
     }
 
     public function deleteTeam($Team):bool{

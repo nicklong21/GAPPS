@@ -54,6 +54,8 @@ class Game{
             $this->is_locked = false;
         }
         $this->season_id = $this->DATA['season_id'];
+        $this->Teams = [];
+        $this->Scores = [];
     }
 
     public function setIsLocked(bool $v){
@@ -70,6 +72,10 @@ class Game{
 
     public function getSeasonID():int{
         return $this->season_id;
+    }
+
+    public function setTitle(string $game_title){
+        $this->DATA['title'] = $game_title;
     }
 
     public function setTeamFactory(TeamFactory $TeamFactory){
@@ -163,6 +169,17 @@ class Game{
         return $this->DATA['venue_id']??0;
     }
 
+    public function setVenue(Venue $Venue){
+        $this->Venue = $Venue;
+    }
+
+    public function getVenue():Venue{
+        if(empty($this->Venue)){
+            $this->Venue = new Venue([]);
+        }
+        return $this->Venue;
+    }
+
     public function getStatus():?string{
         $status = $this->DATA['status']??'';
         if($status == 'Scheduled'){
@@ -182,9 +199,12 @@ class Game{
         $Teams = $this->getTeams();
         $Scores = $this->getScores();
         $type = $this->getType();
+        $Venue = $this->getVenue();
+        $View->setAllGameDetails($this->DATA);
         $View->setTeams($Teams);
         $View->setGameScores($Scores);
         $View->setGameType($type);
+        $View->setVenue($Venue);
         return $this->GameView;
     }
 

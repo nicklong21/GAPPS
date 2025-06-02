@@ -2,12 +2,14 @@
 namespace ElevenFingersCore\GAPPS\Sports\Venues;
 use ElevenFingersCore\Database\DatabaseConnectorPDO;
 use ElevenFingersCore\GAPPS\FactoryTrait;
+use ElevenFingersCore\GAPPS\Sports\SportRegistry;
 use ElevenFingersCore\Utilities\MessageTrait;
 use ElevenFingersCore\GAPPS\ChangeLog;
 class VenueFactory{
     use MessageTrait;
     use FactoryTrait;
     protected $database;
+    protected $Registry;
     protected $db_table = 'venues';
     protected $db_xref = 'venues_sports';
     protected $ChangeLogger;
@@ -27,8 +29,9 @@ class VenueFactory{
         'is_active'=>0,
     ];
 
-    function __construct(DatabaseConnectorPDO $DB){
+    function __construct(DatabaseConnectorPDO $DB, SportRegistry $Registry){
         $this->database = $DB;
+        $this->Registry = $Registry;
         $this->setItemClass(Venue::class);
     }
 

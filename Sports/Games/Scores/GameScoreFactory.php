@@ -76,6 +76,17 @@ class GameScoreFactory{
         return $Scores;
     }
 
+    public function initGameScoreDependencies(array $Scores){
+        $dependency_list = $this->getDependencyValue('game_score_dependencies');
+        $dependency_registry = $this->getDependencies();
+        foreach($dependency_list AS $type=>$dependency){
+            $class_name = $dependency['class'];
+            $factory_class = $dependency['factory'];
+            $Factory = new $factory_class($this->database, $dependency_registry, $class_name);
+            $Factory->initGameScoresDependency($Scores,$type);
+        }
+    }
+
     public function saveGameScore(GameScore $Score, array $DATA):bool{
         $id = $Score->getID();
         $insert = $this->saveItem($DATA, $id);
@@ -86,5 +97,31 @@ class GameScoreFactory{
     public function deleteGameScore(GameScore $Score):bool{
         return $this->deleteItem($Score->getID());
     }
+
+    public function deleteScoresForGame(int $game_id):bool{
+        $success = false;
+        if($game_id){
+            $Scores = $this->getScoresForGame($game_id);
+            foreach($Scores AS $Score){
+                $success = $this->deleteGameScore($Score);
+                if(!$success){
+                    break;
+                }
+            }
+        }else{
+            $this->addErrorMsg('Invalid Game ID');
+        }
+        return $success;
+    }
+
+    public function getDependencies():array{
+        return $this->dependencies;
+    }
+
+    public function getDependencyValue(string $key){
+        $value = isset($this->dependencies[$key])?$this->dependencies[$key]:null;
+        return $value;
+    }
+
 
 }

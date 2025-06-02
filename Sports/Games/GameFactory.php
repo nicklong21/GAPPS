@@ -2,6 +2,7 @@
 namespace ElevenFingersCore\GAPPS\Sports\Games;
 use ElevenFingersCore\Database\DatabaseConnectorPDO;
 use ElevenFingersCore\GAPPS\FactoryTrait;
+use ElevenFingersCore\GAPPS\Sports\Venues\VenueFactory;
 use ElevenFingersCore\Utilities\MessageTrait;
 use ElevenFingersCore\GAPPS\Sports\Games\Teams\TeamFactory;
 use ElevenFingersCore\GAPPS\Sports\Games\Scores\GameScoreFactory;
@@ -14,6 +15,8 @@ class GameFactory{
     protected $TeamFactory;
 
     protected $ScoreFactory;
+
+    protected $VenueFactory;
 
     protected $season_id; 
 
@@ -164,7 +167,9 @@ class GameFactory{
             'start_time'=>$StartDate->format('H:i:s'),
             'season_id'=>$Game->getSeasonID(),
             'status'=>$DATA['game_status'],
+            'venue_id'=>$DATA['venue_id'],
         ];
+        
         $insert = $this->saveItem($game_data, $Game->getID());
         $Game->initialize($insert);
         $TeamFactory = $this->getTeamFactory();
@@ -181,11 +186,56 @@ class GameFactory{
         if(!empty($HomeTeam)){
             $game_title .= ' @ '.$HomeTeam->getSchoolName();
         }
+        $update = ['title'=>$game_title];
+        $this->saveItem($update,$Game->getID());
+        $Game->setTitle($game_title);
         return true;
+    }
+
+    public function cancelGame(Game $Game):bool{
+        if(!empty($Game->getID())){
+            $insert = ['status'=>'Canceled'];
+            $this->saveItem($insert,$Game->getID());
+            $Game->initialize($insert);
+            $success = true;
+        }else{
+            $success = false;
+            $this->addErrorMsg('Game not found');
+        }
+        return $success;
     }
 
     public function deleteGame(Game $Game):bool{
         $id = $Game->getID();
-        return $this->deleteItem($id);
+        $success = false;
+        if($id){
+            $this->database->beginTransaction();
+            try{
+                $ScoreFactory = $this->getScoreFactory();
+                $success = $ScoreFactory->deleteScoresForGame($Game->getID());
+                if(!$success){
+                    $this->addErrorMsg($ScoreFactory->getErrors());
+                }else{
+                    $TeamFactory = $this->getTeamFactory();
+                    $success = $TeamFactory->deleteGameTeams($Game->getID());
+                    if(!$success){
+                        $this->addErrorMsg($TeamFactory->getErrors());
+                    }else{
+                        $success = $this->deleteItem($id);
+                    }
+                }
+            }catch(\Exception $e){
+                $this->addErrorMsg($e->getMessage(),'Error');
+                $success = false;
+            }
+            if($success){
+                $this->database->commitTransaction();
+            }else{
+                $this->database->rollbackTransaction();
+            }
+        }else{
+            $this->addErrorMsg('Game not found');
+        }
+        return $success;
     }
 }

@@ -13,6 +13,8 @@ class SimplePage{
     protected $id = 0;
     protected $DATA;
 
+    protected $title;
+
     protected $group = 'default';
 
     static $db_table = 'list_items';
@@ -29,14 +31,24 @@ class SimplePage{
     public function __construct(DatabaseConnectorPDO $DB, ?int $id = null, ?array $DATA = null){
         $this->database = $DB;
         $this->initialize($id,$DATA);
+        $this->group = $this->DATA['zgroup'];
+        $this->title = $this->DATA['title'];
     }
 
     public function setGroup(string $group){
         $this->group = $group;
     }
 
+    public function getGroup():string{
+        return $this->group;
+    }
+
     public function getTitle():string{
-        return $this->DATA['title']??'';
+        return $this->title??'';
+    }
+
+    public function setTitle(string $title){
+        $this->title = $title;
     }
 
     public function getText():string{
@@ -56,7 +68,7 @@ class SimplePage{
 
 
     public static function getPageFromSlug(DatabaseConnectorPDO $DB, string $slug, ?string $group = 'default'):?SimplePage{
-        $data = $DB->getArrayByKey(static::$db_table, array('meta_title'=>$slug,'zgroup'=>$group, 'type'=>'page'));
+        $data = $DB->getArrayByKey(static::$db_table, array('seo_url'=>$slug,'zgroup'=>$group, 'type'=>'page'));
         $Page = null;
         if($data){
             $Page = new static($DB, null, $data);

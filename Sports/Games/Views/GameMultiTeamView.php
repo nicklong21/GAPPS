@@ -49,7 +49,7 @@ class GameMultiTeamView extends GameView{
         <thead><tr><th>Team</th><th>Score</th><th>Ranking</th></tr></thead>';
         foreach($ranked_team_scores AS $team){
             $ordinal_rank = UtilityFunctions::getOrdinal($team['rank']);
-            $html .= '<tr><td>'.$team['title'].'</td><td>'.$team['score'].'</td><td>'.$ordinal_rank.'</td></tr>';
+            $html .= '<tr><td>'.$team['school'].'</td><td>'.$team['score'].'</td><td>'.$ordinal_rank.'</td></tr>';
         }
         $html .= '</tbody></table>';
         return $html;

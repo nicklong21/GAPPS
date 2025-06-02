@@ -50,6 +50,14 @@ class SeasonSchool{
         return $this->DATA['division_id']??0;
     }
 
+    public function getDivisionFlag():?string{
+        return $this->DATA['division_flag']??NULL;
+    }
+
+    public function getDivisionFlag2():?string{
+        return $this->DATA['division_flag2']??NULL;
+    }
+
     public function getStatus():string{
         return $this->DATA['status']??'';
     }
@@ -62,8 +70,8 @@ class SeasonSchool{
         $this->season_id = $Season->getID();
     }
 
-    public function getSchool():School{
-        return $this->School;
+    public function getSchool():?School{
+        return $this->School??null;
     }
     public function setSchool(School $School){
         $this->School = $School;

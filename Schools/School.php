@@ -47,6 +47,10 @@ class School{
         return $this->DATA['title'];
     }
 
+    public function getType():string{
+        return $this->DATA['type']??'';
+    }
+
     public function getDATA():array{
         return $this->DATA;
     }

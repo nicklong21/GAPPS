@@ -2,6 +2,7 @@
 namespace ElevenFingersCore\GAPPS\Schools;
 
 use DateTimeImmutable;
+use ElevenFingersCore\Accounts\AccountType;
 use ElevenFingersCore\Accounts\UserProfile;
 use ElevenFingersCore\Database\DatabaseConnectorPDO;
 use ElevenFingersCore\GAPPS\Schools\School;
@@ -12,13 +13,15 @@ use ElevenFingersCore\Utilities\UtilityFunctions;
 class Coach extends \ElevenFingersCore\Accounts\User{
 
     protected $School;
-    protected $sports_coached;
+    protected $sports_coached = null;
 
     protected $SportFactory;
 
     protected $Certification;
 
     protected $current_school_year;
+
+    protected $is_head_coach = null;
 
 
     static $db_sport_xref = 'sports_coaches';
@@ -68,6 +71,7 @@ class Coach extends \ElevenFingersCore\Accounts\User{
                     $this->database->query($sql,array(':coach_id'=>$this->getID()));
                 }
             }
+            $this->sports_coached = null;
         }
         return $success;
     }
@@ -120,35 +124,20 @@ class Coach extends \ElevenFingersCore\Accounts\User{
         $this->Certification = $Certification;
     }
 
-    public function getStatus():string{
-        $status = $this->DATA['status'];
-        if($status != 'LOCKED'){
-            $type = $this->getAccountTypeName();
-            if($type == 'Coach'){
-                $status = $this->getCertificationStatus();
-            }
-        }
-        return $status;
-    }
 
-    public function getAccountStatus():string{
-        return $this->DATA['status'];
-    }
 
-    public function getCertificationStatus():string{
+    public function getCertificationStatus(string $school_year):string{
         $status = $this->DATA['status'];
         if($status != 'LOCKED'){
             $certification_year = $this->getProfileValue('gapps-certification');
-            if(empty($certification_year) || $certification_year != $this->getSchoolYear()){
+            if(empty($certification_year) || $certification_year != $school_year){
                 $status = 'NOT APPROVED';
             }else{
                 $certification_date = $this->getProfileValue('certification-date');
                 if(empty($certification_date)){
                     $status = 'PENDING';
-                }elseif($this->DATA['status'] != 'Active'){
-                    $status = 'APPROVED';
                 }else{
-                    $status = 'Active';
+                    $status = 'APPROVED';
                 }
             }
         }
@@ -193,18 +182,31 @@ class Coach extends \ElevenFingersCore\Accounts\User{
     }
 
 
-    public function getSportsCoachedDATA():array{
-        if(empty($this->sports_coached)){
+    public function getSportsCoachedDATA(?bool $refresh = false):array{
+        if($refresh || $this->sports_coached === null){
             $this->sports_coached = $this->database->getArrayListByKey(static::$db_sport_xref,array('coach_id'=>$this->getID()));
         }
         return $this->sports_coached;
+    }
+
+    public function setSportsCoachedDATA(array $DATA){
+        $this->sports_coached = $DATA;
+    }
+
+    public function getSportsCoachedIDs():array{
+        $sport_ids = [];
+        $sports_coached = $this->getSportsCoachedDATA();
+        foreach($sports_coached AS $d){
+            $sport_ids[] = $d['sport_id'];
+        }
+        return $sport_ids;
     }
 
     public function hasSport(int $sport_id):bool{
         $sports_coached = $this->getSportsCoachedDATA();
         $re = false;
         foreach($sports_coached as $sport){
-            if($sports_coached['sport_id'] == $sport_id){
+            if($sport['sport_id'] == $sport_id){
                 $re = true;
                 break;  
             }
@@ -213,6 +215,7 @@ class Coach extends \ElevenFingersCore\Accounts\User{
     }
 
     public function isHeadCoach(?int $sport_id = null):bool{
+        
         $coached = $this->getSportsCoachedDATA();
         $is_head = false;
         foreach($coached AS $sport){
@@ -241,20 +244,69 @@ class Coach extends \ElevenFingersCore\Accounts\User{
     }
 
     /** @return Coach[] */
-    static function getSchoolStaff(DatabaseConnectorPDO $DB, int $school_id, ?array $filter = array()):array{
-        $data = $DB->getResultListByKey('account_profile',array('field'=>'school_id','value'=> $school_id),'acct_id');
-        $Coaches = array();
-        if(!empty($data)){
-            $filter['id'] = array('IN'=>$data);
-            if(empty($filter['usertype'])){
-                $filter['usertype'] = array('!='=>17);
+    static function getSchoolStaff(DatabaseConnectorPDO $DB, ?int $school_id, ?array $filter = array()):array{
+        $acct_data = [];
+        $acct_profiles = [];
+        if($school_id){
+            $profile_data = $DB->getArrayListByKey('account_profile',['field'=>'school_id','value'=>$school_id]);
+            
+            $acct_profiles = [];
+            foreach($profile_data AS $data){
+                $acct_id = $data['acct_id'];
+                if(empty($acct_profiles[$acct_id])){
+                    $acct_profiles[$acct_id] = [];
+                }
+                $acct_profiles[$acct_id][$data['field']] = $data['value'];
             }
-            $coach_data = $DB->getArrayListByKey(static::$table_name,$filter);
-            foreach($coach_data as $coach){
-                $Coaches[] = new static($DB, null, $coach);
+            $acct_ids = array_keys($acct_profiles);
+            
+            if(!empty($acct_ids)){
+                $filter['id'] = ['IN'=>$acct_ids];
+            }
+            if(empty($filter['usertype'])){
+                $filter['usertype'] = ['!='=>17];
+            }
+            $acct_data = $DB->getArrayListByKey(static::$table_name,$filter);
+           
+        }else{
+            if(empty($filter['usertype'])){
+                $filter['usertype'] = ['IN'=>[11,13,14,15,16]];
+            }
+            $acct_data = $DB->getArrayListByKey(static::$table_name,$filter,[],['key_name'=>'id']);
+            $acct_ids = array_keys($acct_data);
+            $profile_data = $DB->getArrayListByKey('account_profile',['acct_id'=>['IN'=>$acct_ids]]);
+            $acct_profiles = [];
+            foreach($profile_data AS $data){
+                $acct_id = $data['acct_id'];
+                if(empty($acct_profiles[$acct_id])){
+                    $acct_profiles[$acct_id] = [];
+                }
+                $acct_profiles[$acct_id][$data['field']] = $data['value'];
+            }
         }
-    }
-    return $Coaches;
+
+        $Accounts = [];
+        $Usertypes = [];
+        foreach($acct_data AS $data){
+            $usertype = $data['usertype'];
+            if(empty($Usertypes[$usertype])){
+                //echo 'load Usertype: '.$usertype;
+                $Usertypes[$usertype] = new AccountType($DB, $usertype);
+            }
+            //pa(array_keys($Usertypes));
+            $UserType = $Usertypes[$usertype];
+            $Account = new static($DB,null,$data);
+            $acct_id = $Account->getID();
+            $Account->setAccountType($UserType);
+            $profile_class = $UserType->getUserProfileClass();
+            $Account->setProfileClass($profile_class);
+            $profile_data = isset($acct_profiles[$acct_id])?$acct_profiles[$acct_id]:[];
+            $Account->setProfile($profile_data);
+            
+            $Accounts[$Account->getID()] = $Account;
+        }
+        
+    return $Accounts;
     }
     /**
      *  

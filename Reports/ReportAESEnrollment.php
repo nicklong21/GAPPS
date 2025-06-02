@@ -29,7 +29,7 @@ class ReportAESEnrollment extends Report{
         }
         $schools = $this->database->getArrayListByKey('schools',$school_param,'title',['key_name'=>'id']);
         $school_ids = array_keys($schools);
-        asort($schools);
+        //asort($schools);
 
         $logger->debug('schools',['schools'=>$schools]);
         $sql = 'SELECT * FROM students_aes_2024 WHERE status IN ("APPROVED","ASSIGNED") AND date_updated<=:end_date AND date_updated >= :start_date ';

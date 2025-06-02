@@ -22,6 +22,7 @@ class SeasonSchoolFactory{
         'division_id'=>0,
         'status'=>'',
         'division_flag'=>NULL,
+        'division_flag2'=>NULL,
     ];
 
     function __construct(DatabaseConnectorPDO $DB, array $dependencies, SeasonFactory $SeasonFactory){
@@ -29,10 +30,27 @@ class SeasonSchoolFactory{
         $item_class = $dependencies['school'];
         $this->dependencies = $dependencies;
         $this->setItemClass($item_class);
+        $this->SeasonFactory = $SeasonFactory;
     }
 
     public function getSeasonSchool(?int $id = null, ?array $DATA = array()):SeasonSchool{
         $SeasonSchool = $this->getItem($id, $DATA);
+        $this->initializeSeasonSchool($SeasonSchool);
+        return $SeasonSchool;
+    }
+
+    public function getSeasonSchoolsByID(?array $ids, array $rows = array()):array{
+        if($ids){
+            $rows = $this->database->getArrayListByKey($this->db_table,['id'=>['IN'=>$ids]]);
+        }
+        $SeasonSchools = [];
+        foreach($rows AS $DATA){
+            $SeasonSchools[] = $this->getSeasonSchool(null, $DATA);
+        }
+        return $SeasonSchools;
+    }
+
+    public function initializeSeasonSchool(SeasonSchool $SeasonSchool){
         $season_id = $SeasonSchool->getSeasonID();
         if(isset($this->Seasons[$season_id])){
             $Season = $this->Seasons[$season_id];
@@ -40,7 +58,16 @@ class SeasonSchoolFactory{
             $Season = $this->SeasonFactory->getSeason($season_id);
         }
         $SeasonSchool->setSeason($Season);
-        return $SeasonSchool;
+    }
+
+    public function getSchoolIDsByDivision(int $division_id):array{
+        $school_ids = $this->database->getResultListByKey($this->db_table,['division_id'=>$division_id],'school_id');
+        return $school_ids;
+    }
+
+    public function getSchoolIDsByRegion(int $region_id):array{
+        $school_ids = $this->database->getResultListByKey($this->db_table,['region_id'=>$region_id],'school_id');
+        return $school_ids;
     }
 
     public function getSchoolsBySeason(array|Season $Season, ?int $school_id = null):array{
@@ -61,6 +88,7 @@ class SeasonSchoolFactory{
             $filter['school_id'] = $school_id;
         }
         $schools_data = $this->database->getArrayListByKey($this->db_table, $filter);
+        
         $SeasonSchools = array();
         foreach($schools_data AS $DATA){
             $SeasonSchool = $this->getSeasonSchool(null, $DATA);
@@ -132,14 +160,19 @@ class SeasonSchoolFactory{
     }
 
     public function saveSchool(SeasonSchool $School, array $DATA):bool{
+        global $debug;
+        $debug[] = 'saveSchool';
         if(empty($DATA['season_id'])){
             $DATA['season_id'] = $School->getSeasonID();
         }
         if(empty($DATA['school_id'])){
             $DATA['school_id'] = $School->getSchoolID();
         }
+        $debug[] = $DATA;
         $insert = $this->saveItem($DATA, $School->getID());
+        $debug[] = $insert;
         $School->initialize($insert);
+        $this->initializeSeasonSchool($School);
         return true;
     }
 

@@ -19,6 +19,10 @@ class SportFactory{
         'zgroup'=>'High School',
         'status'=>'active',
         'slug'=>'',
+        'category'=>null,
+        'sub_category_title'=>null,
+        'maxpreps_stats'=>0,
+        'participating_label'=>'Participating Schools',
     ];
 
     function __construct(DatabaseConnectorPDO $DB, SportRegistry $Registry){
@@ -117,6 +121,28 @@ class SportFactory{
             $Sports[] = $this->getSport(0,$DATA);
         }
         return $Sports;
+    }
+
+    public function getSportsCategories(null|string|array $group = null):array{
+        $sql = 'SELECT DISTINCT category FROM sports WHERE category IS NOT null ';
+        $args = ['status'=>'active'];
+        if(!empty($group)){
+           if(is_array($group)){
+            $args['agroup'] = ['IN'=>$group];
+           }else{
+            $args['agroup'] = $group;
+           }
+        }
+        $query = $this->database->buildQueryString($args);
+        $where_str = str_replace('1 = 1','',$query['query_str']);
+        $sql .= $where_str;
+        $categories = $this->database->getResultList($sql,$query['args'],'category');
+
+        $sql = 'SELECT title FROM sports WHERE category IS NULL '.$where_str;
+        $sports = $this->database->getResultList($sql,$query['args'],'title');
+        $all_sports_categories = array_merge($categories,$sports);
+        asort($all_sports_categories);
+        return $all_sports_categories;
     }
 
     public function getSeasonFactory(?string $sport_slug = 'sport'):SeasonFactory{

@@ -2,7 +2,9 @@
 namespace ElevenFingersCore\GAPPS\Sports;
 
 use ElevenFingersCore\GAPPS\Schools\StudentFactory;
+use ElevenFingersCore\GAPPS\Sports\Games\Scores\Dependencies\PitchCountFactory;
 use ElevenFingersCore\GAPPS\Sports\Games\Scores\GameScoreMultiTeam;
+use ElevenFingersCore\GAPPS\Sports\Rosters\RosterStudentDependencies\PitchCountMS;
 use ElevenFingersCore\GAPPS\Sports\Seasons\Season;
 use ElevenFingersCore\GAPPS\Sports\Seasons\SeasonSchool;
 use ElevenFingersCore\GAPPS\Sports\Seasons\SeasonSchoolFactory;
@@ -31,6 +33,7 @@ use ElevenFingersCore\GAPPS\Sports\Rosters\RosterStudentFactoryGolf;
 use ElevenFingersCore\GAPPS\Sports\Rosters\RosterStudentGolf;
 use ElevenFingersCore\GAPPS\Sports\Rosters\RosterTables\RosterTable;
 use ElevenFingersCore\GAPPS\Academics\Rosters\RosterTables\RosterTableAcademicDayEL;
+use ElevenFingersCore\GAPPS\Academics\Rosters\RosterTables\RosterTableAcademicDayHS;
 use ElevenFingersCore\GAPPS\Academics\Rosters\RosterTables\RosterTableAcademicDayMS;
 use ElevenFingersCore\GAPPS\Sports\Rosters\RosterTables\RosterTableBassFishing;
 use ElevenFingersCore\GAPPS\Academics\Rosters\RosterTables\RosterTableChess;
@@ -45,6 +48,11 @@ use ElevenFingersCore\GAPPS\Academics\Rosters\RosterTables\RosterTableLiterary;
 use ElevenFingersCore\GAPPS\Academics\Rosters\RosterTables\RosterTableMathBowl;
 use ElevenFingersCore\GAPPS\Sports\Rosters\RosterTables\RosterTableNoJersey;
 use ElevenFingersCore\GAPPS\Academics\Rosters\RosterTables\RosterTableRobotics;
+use ElevenFingersCore\GAPPS\Sports\Games\Scores\Dependencies\PitchCount;
+use ElevenFingersCore\GAPPS\Sports\Rosters\RosterStudentDependencies\GolfSeasonAverage;
+use ElevenFingersCore\GAPPS\Sports\Rosters\RosterStudentDependencies\GolfSeasonAverageFactory;
+use ElevenFingersCore\GAPPS\Sports\Rosters\RosterStudentPitch;
+use ElevenFingersCore\GAPPS\Sports\Rosters\RosterTables\RosterTablePitch;
 use ElevenFingersCore\GAPPS\Sports\Rosters\RosterTables\RosterTableWrestling;
 
 class SportRegistry{
@@ -65,6 +73,8 @@ class SportRegistry{
             'division_factory'=>DivisionFactory::class,
             'region_factory'=>RegionFactory::class,
             'school_factory'=>SeasonSchoolFactory::class,
+            'roster_student_dependencies'=>[],
+            'game_score_dependencies'=>[],
         ],
         'archery'=>[
             'roster_table'=>RosterTableNoJersey::class,
@@ -82,9 +92,24 @@ class SportRegistry{
             'game_view'=>GameBaseBallView::class,
         ],
         'baseball-ms'=>[
+            'sport'=>SportPitchCount::class,
             'roster_varsity_values'=>array('A-Team','B-Team'),
             'roster_varsity_label'=>'A/B',
+            'roster_student'=>RosterStudentPitch::class,
+            'roster_table'=>RosterTablePitch::class,
             'game_view'=>GameBaseBallView::class,
+            'game_score_dependencies'=>[
+                'PitchCount'=>[
+                    'class'=>PitchCount::class,
+                    'factory'=>PitchCountFactory::class,
+                ],
+            ],
+            'roster_student_dependencies'=>[
+                'PitchCount'=>[
+                    'class'=>PitchCountMS::class,
+                    'factory'=>\ElevenFingersCore\GAPPS\Sports\Rosters\RosterStudentDependencies\PitchCountFactory::class,
+                ]
+            ],
         ],
         'basketball-boys'=>[
         ],
@@ -155,7 +180,12 @@ class SportRegistry{
             'game_view'=>GameCrossCountryView::class,
             'score'=>GameScoreMultiTeam::class,
         ],
-        'cross-country-jr'=>[
+        'cross-country-elementary'=>[
+            'roster_table'=>RosterTableNoJersey::class,
+            'game_view'=>GameCrossCountryView::class,
+            'score'=>GameScoreMultiTeam::class,
+        ],
+        'cross-country-elementary-girls'=>[
             'roster_table'=>RosterTableNoJersey::class,
             'game_view'=>GameCrossCountryView::class,
             'score'=>GameScoreMultiTeam::class,
@@ -195,7 +225,11 @@ class SportRegistry{
             'roster_student'=>RosterStudentGolf::class,
             'roster_table'=>RosterTableGolf::class,
             'score'=>GameScoreGolf::class,
-            'roster_student_factory'=>RosterStudentFactoryGolf::class,
+            'roster_student_dependencies'=>[
+                'SeasonAverage'=>[
+                    'class'=>GolfSeasonAverage::class,
+                    'factory'=>GolfSeasonAverageFactory::class],
+                ],
         ],
         'golf-ms'=>[
             'roster_varsity_values'=>array('A-Team','B-Team'),
@@ -204,13 +238,15 @@ class SportRegistry{
             'roster_table'=>RosterTableGolf::class,
             'game_view'=>GameGolfView::class,
             'score'=>GameScoreGolf::class,
-            'roster_student_factory'=>RosterStudentFactoryGolf::class,
         ],
         'history-bowl-hs'=>[
             'roster_table'=>RosterTableHistoryBowl::class,
         ],
         'honors-chorus'=>[
             'roster_table'=>RosterTableChorus::class,
+        ],
+        'hs-academic-day'=>[
+            'roster_table'=>RosterTableAcademicDayHS::class,
         ],
         'instrumental-music'=>[
             'roster_table'=>RosterTableInstrumentalMusic::class,
@@ -268,7 +304,19 @@ class SportRegistry{
             'game_view'=>GameCrossCountryView::class,
             'score'=>GameScoreMultiTeam::class,
         ],
+        'swimming-girls'=>[
+            'roster_table'=>RosterTableNoJersey::class,
+            'game_view'=>GameCrossCountryView::class,
+            'score'=>GameScoreMultiTeam::class,
+        ],
         'swimming-ms'=>[
+            'roster_table'=>RosterTableNoJersey::class,
+            'roster_varsity_values'=>array('A-Team','B-Team'),
+            'roster_varsity_label'=>'A/B',
+            'game_view'=>GameCrossCountryView::class,
+            'score'=>GameScoreMultiTeam::class,
+        ],
+        'swimming-ms-girls'=>[
             'roster_table'=>RosterTableNoJersey::class,
             'roster_varsity_values'=>array('A-Team','B-Team'),
             'roster_varsity_label'=>'A/B',

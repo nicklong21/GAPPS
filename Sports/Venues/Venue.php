@@ -17,7 +17,7 @@ class Venue{
     }
 
     public function getTitle():string{
-        return $this->DATA['title'];
+        return $this->DATA['title']??'';
     }
     public function getSchoolID(){
         return $this->DATA['school_id'];
@@ -41,19 +41,24 @@ class Venue{
     }
 
     public function getAddressString():string{
-        $title = '';
+        $DATA = $this->getDATA();
         $address = '';
-        $html = '<h5>'.$title.'</h5>
-        '.$address;
-        return $html;
+        if(!empty($DATA)){
+            $address = trim($DATA['address1']).'<br/>';
+            if(!empty(trim($DATA['address2']))){
+                $address .= trim($DATA['address2']).'<br/>';
+            }
+            $address .= $DATA['city'].', '.$DATA['state'].' '.$DATA['zip'];
+        }
+        return $address;
     }
 
     public function getInstructionsString():string{
-        return '';
+        return $this->DATA['instructions']??'';
     }
 
     public function getGoogleMapString():string{
-        return '';
+        return $this->DATA['googlemap']??'';
     }
 
 }

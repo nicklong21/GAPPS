@@ -4,7 +4,9 @@ use ElevenFingersCore\Database\DatabaseConnectorPDO;
 use ElevenFingersCore\GAPPS\FactoryTrait;
 use ElevenFingersCore\GAPPS\Sports\Seasons\Regions\RegionFactory;
 use ElevenFingersCore\GAPPS\Sports\Seasons\Divisions\DivisionFactory;
+use ElevenFingersCore\GAPPS\Sports\Sport;
 use ElevenFingersCore\GAPPS\Sports\SportFactory;
+use ElevenFingersCore\GAPPS\Sports\SportRegistry;
 use ElevenFingersCore\Utilities\MessageTrait;
 use ElevenFingersCore\Utilities\UtilityFunctions;
 
@@ -12,6 +14,7 @@ class SeasonFactory{
     use FactoryTrait;
     use MessageTrait;
     protected $database;
+
     protected $dependencies;
     protected $db_table = 'sports_seasons';
     protected $DivisionFactory;
@@ -35,7 +38,7 @@ class SeasonFactory{
         'feedback_letter'=>0,
     ];
 
-    function __construct(DatabaseConnectorPDO $DB, array $dependencies, SportFactory $SportFactory){
+    function __construct(DatabaseConnectorPDO $DB,  array $dependencies, SportFactory $SportFactory){
         $this->database = $DB;
         $season_class = $dependencies['season'];
         $this->dependencies = $dependencies;
@@ -50,21 +53,30 @@ class SeasonFactory{
     }
 
     public function getSeason(?int $id = null, ?array $DATA = array()):Season{
+        
         $Season = $this->getItem($id, $DATA);
         $Season->setDivisionFactory($this->getDivisionFactory());
         $Season->setRegionFactory($this->getRegionFactory());
         $Season->setSeasonSchoolFactory($this->getSeasonSchoolFactory());
-        $sport_id = $Season->getSportID();
-        if(!empty($this->Sports[$sport_id])){
-            $Sport = $this->Sports[$sport_id];
-        }else{
-            $Sport = $this->SportFactory->getSport($sport_id);
-            $this->Sports[$Sport->getID()] = $Sport;
+        if($Season->getID()){
+            $sport_id = $Season->getSportID();
+            if(!empty($this->Sports[$sport_id])){
+                $Sport = $this->Sports[$sport_id];
+            }else{
+                $Sport = $this->SportFactory->getSport($sport_id);
+                $this->Sports[$Sport->getID()] = $Sport;
+            }
+            $Season->setSport($Sport);
         }
-        $Season->setSport($Sport);
+        
         return $Season;
     }
 
+    /**
+     * Summary of getSportSeasons
+     * @param int $sport_id
+     * @return Season[]
+     */
     public function getSportSeasons(int $sport_id):array{
         $data = $this->database->getArrayListByKey($this->db_table,['sport_id'=>$sport_id],'date_start DESC');
         $Seasons = [];
@@ -91,6 +103,18 @@ class SeasonFactory{
 
     public function getDependencies():array{
         return $this->dependencies;
+    }
+
+    public function setSports(array|Sport $sports){
+        if(is_array($sports)){
+            foreach($sports AS $Sport){
+                $sport_id = $Sport->getID();
+                $this->Sports[$sport_id] = $Sport;
+            }
+        }else{
+            $sport_id = $sports->getID();
+            $this->Sports[$sport_id] = $sports;
+        }
     }
 
     public function copyFromPreviousYear(Season $Season):bool{
@@ -133,12 +157,20 @@ class SeasonFactory{
         return $success;
     }
 
+    
     public function getSportSeasonForSchoolYear(int $sport_id, string $school_year):Season{
         $data = $this->database->getArrayByKey($this->db_table,['year'=>$school_year,'sport_id'=>$sport_id]);
         $Season = $this->getSeason(null, $data);
         return $Season;
     }
 
+    /**
+     * Summary of getSeasonsForSchoolYear
+     * @param string $school_year
+     * @param null|string|array $group
+     * @param null|string|array $age_group
+     * @return Season[]
+     */
     public function getSeasonsForSchoolYear(string $school_year,null|string|array $group = null, null|string|array $age_group = null):array{
         $Sports = $this->SportFactory->getSports($group,$age_group);
         $Sports_by_id = [];

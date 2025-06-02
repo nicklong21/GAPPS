@@ -12,6 +12,8 @@ class RosterStudentFactory{
     use MessageTrait;
     protected $dependencies;
 
+    private $init_single_dependency = true;
+
     protected $ChangeLogger;
     protected $db_table = 'rosters_students';
     protected $schema = [
@@ -36,7 +38,8 @@ class RosterStudentFactory{
     function __construct(DatabaseConnectorPDO $DB, array $dependencies){
         $this->database = $DB;
         $this->dependencies = $dependencies;
-        $this->setItemClass($dependencies['roster_student']);
+        $item_class = $this->getDependencyValue('roster_student');
+        $this->setItemClass($item_class);
     }
 
     public function setChangeLogger(ChangeLog $Logger){
@@ -53,11 +56,15 @@ class RosterStudentFactory{
 
     public function getRosterStudent(?int $id = 0, ?array $DATA = array()):RosterStudent{
         $RosterStudent = $this->getItem($id, $DATA);
+        if($this->init_single_dependency){
+            $this->initRosterStudentDependencies([$RosterStudent]);
+        }
         return $RosterStudent;
     }
 
     public function getRosterStudents(int $roster_id):array{
         $RosterStudents = [];
+        $this->init_single_dependency = false;
         if(!empty($roster_id)){
             $filter = array('roster_id'=>$roster_id);
             $roster_student_data = $this->database->getArrayListByKey($this->db_table, $filter,['lastname','firstname']);
@@ -65,27 +72,46 @@ class RosterStudentFactory{
                 $RosterStudents[] = $this->getRosterStudent(null, $DATA);
             }
         }
+        $this->initRosterStudentDependencies($RosterStudents);
+        $this->init_single_dependency = true;
         return $RosterStudents;
     }
 
     public function getRosterStudentsByIDs(array $ids):array{
         $filter = array('id'=>array('IN'=>$ids));
+        $this->init_single_dependency = false;
         $roster_student_data = $this->database->getArrayListByKey($this->db_table, $filter);
         $RosterStudents = [];
         foreach($roster_student_data AS $DATA){
             $RosterStudents[] = $this->getRosterStudent(null, $DATA);
         }
+        $this->initRosterStudentDependencies($RosterStudents);
+        $this->init_single_dependency = true;
         return $RosterStudents;
     }
 
     public function getRosterStudentsByStudentIDs(int $roster_id, array $student_ids):array{
         $filter = array('roster_id'=>$roster_id, 'student_id'=>['IN'=>$student_ids]);
+        $this->init_single_dependency = false;
         $roster_student_data = $this->database->getArrayListByKey($this->db_table, $filter);
         $RosterStudents = [];
         foreach($roster_student_data AS $DATA){
             $RosterStudents[] = $this->getRosterStudent(null, $DATA);
         }
+        $this->initRosterStudentDependencies($RosterStudents);
+        $this->init_single_dependency = true;
         return $RosterStudents;
+    }
+
+    public function initRosterStudentDependencies(array $RosterStudents){
+        $dependency_list = $this->getDependencyValue('roster_student_dependencies');
+        $dependency_registry = $this->getDependencies();
+        foreach($dependency_list AS $type=>$dependency){
+            $class_name = $dependency['class'];
+            $factory_class = $dependency['factory'];
+            $Factory = new $factory_class($this->database, $dependency_registry, $class_name);
+            $Factory->initRosterStudentGroupDependency($RosterStudents,$type);
+        }
     }
 
     public function updateRosterStudents(int $roster_id, $data, StudentFactory $studentFactory):bool{
@@ -151,6 +177,15 @@ class RosterStudentFactory{
         return true;
     }
 
+    protected function saveRosterStudentDependencies(RosterStudent $RosterStudent, array $DATA){
+        $dependency_list = $RosterStudent->getDependencyList();
+        foreach($dependency_list AS $type=>$class_name){
+            $factory_class = $class_name::getFactoryClass();
+            $Factory = new $factory_class($this->database, $this->getDependencies(),$class_name);
+            $Factory->saveRosterStudentDependencies($RosterStudent, $DATA);
+        }
+    }
+
     public function deleteRosterStudent(RosterStudent $RosterStudent):bool{
         $this->addChangeLogRecord('DELETE',$RosterStudent->getID(),$RosterStudent->getName().' Record Deleted');
         return $this->deleteItem($RosterStudent->getID());
@@ -158,6 +193,11 @@ class RosterStudentFactory{
 
     public function getDependencies():array{
         return $this->dependencies;
+    }
+
+    public function getDependencyValue(string $key){
+        $value = isset($this->dependencies[$key])?$this->dependencies[$key]:null;
+        return $value;
     }
 
 }

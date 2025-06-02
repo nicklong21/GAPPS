@@ -23,43 +23,88 @@ class GameView{
 
     public function getDetailsHTML():string{
         $html = '';
-        $season_title = $this->getGameDetail('season_title');
-        $game_title = $this->getGameDetail('game_title');
         $game_status = $this->getGameDetail('game_status');
+        $game_id = $this->getGameDetail('id');
         $teams_info = $this->getTeamInfo();
         $hometeam_school = $teams_info['hometeam']['school']??'';
         $awayteam_school = $teams_info['awayteam']['school']??'';
-        $start_time = $this->getGameStartTime('F d, Y - g:i:s A');
+        $start_time = $this->getGameStartTime('F d, Y - g:i A');
+        $Venue = $this->getVenue();
+        
+        $game_date = $this->getGameStartTime('M d');
+        $game_time = $this->getGameStartTime('g:i A');
+        $date_html = '<div class="game_date"><span class="date">'.$game_date.'</span><span class="time">'.$game_time.'</span></div>';
+
+
+        if($Venue->getID()){
+            $venue_title = $Venue->getTitle();
+            $venue_address = $Venue->getAddressString();
+            $venue_instructions = $Venue->getInstructionsString();
+            $venue_googlemap = $Venue->getGoogleMapString();
+            $venue_html = '<div class="venue-address"><strong>'.$venue_title.'</strong><br/>
+            '.$venue_address.'
+            <div class="instructions">'.$venue_instructions.'</div>
+            </div>';
+        }else{
+            $venue_html = '';
+        }
+        
+
+        //$html .= '<div class="venue_address">'.$Venue->getAddressString().'</div>';
+        //$html .= '<div class="venue_instructions">'.$Venue->getInstructionsString().'</div>';
+
+
+        $html  = '<div class="row" data-game="'.$game_id.'">
+        <div class="col-12 col-md-4 col-lg-3 text-center text-md-end">'.$date_html.'</div>
+        <div class="col-12 col-md-8 col-lg-9 text-center text-md-start">
+        <h4>'.$awayteam_school.' @ '.$hometeam_school.'</h4>
+        '.$venue_html.'
+
+        </div>
+        </div>';
+
+        return $html;
+    }
+
+    public function getDetailsTable():string{
+
+        $game_status = $this->getGameDetail('game_status');
+        $game_id = $this->getGameDetail('id');
+        $teams_info = $this->getTeamInfo();
+        $hometeam_school = $teams_info['hometeam']['school']??'';
+        $awayteam_school = $teams_info['awayteam']['school']??'';
+        $start_time = $this->getGameStartTime('F d, Y - g:i A');
         $Venue = $this->getVenue();
         $venue_html = $Venue->getAddressString();
 
-
-        $html .= '<div class="title"><h3>'.$season_title.'</h3></div>';
-        $html .= '<p class="center"><strong>'.$game_title.'</strong></p>';
-        $html .= '<table class="table striped">';
-        $html .= '<tr><th>Hometeam:<th><td>'.$hometeam_school.'</td></tr>';
-        $html .= '<tr><th>Awayteam:<th><td>'.$awayteam_school.'</td></tr>';
+        $html = '';
+        $html .= '<table class="table striped" data-id="'.$game_id.'">';
+        $html .= '<tr><th>Hometeam:</th><td>'.$hometeam_school.'</th></tr>';
+        $html .= '<tr><th>Awayteam:</th><td>'.$awayteam_school.'</th></tr>';
         $html .= '<tr><th>Date:</th><td>'.$start_time.'</td></tr>';
-        $html .= '<tr><th>Location:</th></td>'.$venue_html.'</td></tr>';
+        $html .= '<tr><th>Location:</th><td>
+        <strong>'.$Venue->getTitle().'</strong><br/>
+        '.$venue_html.'
+        <div class="venue_instructions">'.$Venue->getInstructionsString().'</div>
+        </td></tr>';
         if($game_status == 'Completed'){
             $html .= '<tr><th>Results:</th><td>'.$this->getResultsTable().'</td></tr>';
         }
-        $html .= $Venue->getGoogleMapString();
-        $html .= $Venue->getInstructionsString();
+
         return $html;
     }
 
     public function getResultsTable():string{
         $teams_info = $this->getTeamInfo();
-        $hometeam = $teams_info['hometeam'];
-        $awayteam = $teams_info['awayteam'];
+        $hometeam = $teams_info['hometeam']?$teams_info['hometeam']:['school'=>'','result'=>'','score'=>''];
+        $awayteam = $teams_info['awayteam']?$teams_info['awayteam']:['school'=>'','result'=>'','score'=>''];
        
-
         $html = '';
         $html .= '<table class="table game-scores table-bordered table-striped my-3">
         <thead><tr><th>School</th><th>Score</th><th>Game</th></tr></thead>';
         $html .= '<tbody>';
         $html .= '<tr><th><span class="'.$hometeam['result'].'">'.$hometeam['school'].'</span></th><td>'.$hometeam['score'].'</td><td class="'.$hometeam['result'].'">'.$hometeam['result'].'</td></tr>';
+        
         $html .= '<tr><th><span class="'.$awayteam['result'].'">'.$awayteam['school'].'</span></th><td>'.$awayteam['score'].'</td><td class="'.$awayteam['result'].'">'.$awayteam['result'].'</td></tr>';
         
         $html .= '</table>';
@@ -69,8 +114,8 @@ class GameView{
     public function getEditScoreForm():string{
         $html = '';
         $teams_info = $this->getTeamInfo();
-        $hometeam = $teams_info['hometeam'];
-        $awayteam = $teams_info['awayteam'];
+        $hometeam = $teams_info['hometeam']?$teams_info['hometeam']:['school'=>'','result'=>'','score'=>''];
+        $awayteam = $teams_info['awayteam']?$teams_info['awayteam']:['school'=>'','result'=>'','score'=>''];
         $html = '<form class="edit-scores">';
         $html .= '<table class="table game-scores table-bordered table-striped my-3">
         <thead><tr><th>School</th><th>Score</th></tr></thead>';
@@ -116,6 +161,10 @@ class GameView{
         return $this->teams_info;
     }
 
+    public function setAllGameDetails(array $details){
+        $this->game_details = $details;
+    }
+
     public function setGameDetail(string $key, $value){
         $this->game_details[$key] = $value;
     }
@@ -134,11 +183,12 @@ class GameView{
 
     public function getGameStartTime(?string $format = null){
         $start_time = $this->getGameDetail('start_time');
+        $game_date = $this->getGameDetail('date');
         $StartTime = null;
         if(is_string($start_time)){
-            $StartTime = new \DateTimeImmutable($start_time);
+            $StartTime = new \DateTimeImmutable($game_date.' '.$start_time);
         }
-        return $format?$StartTime->format($format):$StartTime;
+        return $StartTime&&$format?$StartTime->format($format):$StartTime;
     }
 
     public function setVenue(Venue $Venue){
@@ -146,7 +196,8 @@ class GameView{
     }
 
     public function getVenue():Venue{
-        return $this->Venue;
+        $Venue = $this->Venue?$this->Venue:new Venue([]);
+        return $Venue;
     }
 
     /**

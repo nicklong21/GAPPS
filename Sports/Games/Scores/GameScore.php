@@ -24,8 +24,8 @@ class GameScore{
         return $this->DATA['team_id']??0;
     }
 
-    public function getScore():?int{    
-        return $this->DATA['score']??0;
+    public function getScore():?int{   
+        return (int) $this->DATA['score']??0;
     }
 
     public function getResult():string{

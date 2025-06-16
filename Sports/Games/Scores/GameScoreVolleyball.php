@@ -6,6 +6,7 @@ class GameScoreVolleyball extends GameScore{
 
 
     static function compareScores(array $data):array{
+        global $logger;
         $team_ids = array_keys($data['sets']);
         $team1_id = $team_ids[0];
         $team2_id = $team_ids[1];
@@ -28,6 +29,9 @@ class GameScoreVolleyball extends GameScore{
                 $team1_wins++;
             }
         }
+
+
+        
         
         // Determine the result for this line (individual result)
         $game_scores[$team1_id]['result'] = 'Tie';

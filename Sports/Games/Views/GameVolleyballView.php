@@ -6,9 +6,9 @@ class GameVolleyballView extends GameView{
 
 
     public function getResultsTable():string{
-        $teams_data = $this->getTeamInfo();
-        $home = $teams_data['hometeam'];
-        $away = $teams_data['awayteam'];
+        $teams_info = $this->getTeamInfo();
+        $hometeam = $teams_info['hometeam']?$teams_info['hometeam']:['school'=>'','result'=>'','score'=>'','data'=>[],'students'=>[]];
+        $awayteam = $teams_info['awayteam']?$teams_info['awayteam']:['school'=>'','result'=>'','score'=>'','data'=>[],'students'=>[]];
         
         $html = '<table class="table game-scores tennis_scores table-bordered table-striped my-3">';
         $html .= '<thead>
@@ -16,25 +16,25 @@ class GameVolleyballView extends GameView{
         </thead>';
         $html .= '<tbody>';
         $html .= '<tr>
-        <th><span class="'.$home['result'].'">'.$home['school'].'</span></th>
+        <th><span class="'.$hometeam['result'].'">'.$hometeam['school'].'</span></th>
         ';
-        $home_line_data = $home['data'];
+        $home_line_data = $hometeam['data']??['sets'=>[1=>'',2=>'',3=>'',4=>'',5=>'']];
         for($i = 1; $i <= 5; $i++){
             $set_score = $home_line_data['sets'][$i]??'';
             $html .= '<td>'.$set_score.'</td>';
         }
-        $html .= '<td class="'.$home['result'].'">'.$home['result'].'</td>
+        $html .= '<td class="'.$hometeam['result'].'">'.$hometeam['result'].'</td>
         </tr>';
 
         $html .= '<tr>
-        <th><span class="'.$away['result'].'">'.$away['school'].'</span></th>
+        <th><span class="'.$awayteam['result'].'">'.$awayteam['school'].'</span></th>
         ';
-        $away_line_data = $away['data'];
+        $away_line_data = $awayteam['data']??['sets'=>[1=>'',2=>'',3=>'',4=>'',5=>'']];
         for($i = 1; $i <= 5; $i++){
             $set_score = $away_line_data['sets'][$i]??'';
             $html .= '<td>'.$set_score.'</td>';
         }
-        $html .= '<td class="'.$away['result'].'">'.$away['result'].'</td>
+        $html .= '<td class="'.$awayteam['result'].'">'.$awayteam['result'].'</td>
         </tr>';
         
         $html .= '</tbody>';
@@ -46,25 +46,34 @@ class GameVolleyballView extends GameView{
     public function getEditScoreForm():string{ 
         $html = '';
         $teams_info = $this->getTeamInfo();
-        $hometeam = $teams_info['hometeam'];
-        $awayteam = $teams_info['awayteam'];
+        $hometeam = $teams_info['hometeam']?$teams_info['hometeam']:['id'=>0,'school'=>'','result'=>'','score'=>'','data'=>[],'students'=>[]];
+        $awayteam = $teams_info['awayteam']?$teams_info['awayteam']:['id'=>0,'school'=>'','result'=>'','score'=>'','data'=>[],'students'=>[]];
         $html = '<form class="edit-scores">';
         $html .= '<table class="table game-scores table-bordered table-striped my-3">
         <thead><tr><th>School</th><th>Set<br/>1</th><th>Set<br/>2</th><th>Set<br/>3</th><th>Set<br/>4</th><th>Set<br/>5</th></tr></thead>';
         $html .= '<tbody>';
+        if(!empty($hometeam['school'])){
         $html .= '<tr><th>'.$hometeam['school'].'</th>';
-        $home_line_data = $hometeam['data'];
+        $home_line_data = $hometeam['data']??['sets'=>[1=>'',2=>'',3=>'',4=>'',5=>'']];
         for($i = 1; $i <= 5; $i++){
             $set_score = $home_line_data['sets'][$i]??'';
             $html .= '<td><input type="number" name="sets['.$hometeam['id'].']['.$i.']" value ="'.$set_score.'"></td>';
         }
         $html .= '</tr>';
-        $away_line_data = $awayteam['data'];
+        }else{
+            $html .= '<tr><td colspan="6">No Hometeam Selected.</td></tr>';
+        }
+        if(!empty($awayteam['school'])){
+        $html .= '<tr><th>'.$awayteam['school'].'</th>';
+        $away_line_data = $awayteam['data']??['sets'=>[1=>'',2=>'',3=>'',4=>'',5=>'']];
         for($i = 1; $i <= 5; $i++){
             $set_score = $away_line_data['sets'][$i]??'';
             $html .= '<td><input type="number" name="sets['.$awayteam['id'].']['.$i.']" value ="'.$set_score.'"></td>';
         }
         $html .= '</tr>';
+        }else{
+            $html .= '<tr><td colspan="6">No Awayteam Selected.</td></tr>';
+        }
         $html .= '</table>';
         $html .= '</form>';
         return $html;
@@ -91,6 +100,7 @@ class GameVolleyballView extends GameView{
                     }
                 }
                 $team_data = [
+                    'id'=>$Team->getID(),
                     'school'=>$school,
                     'score'=>$score,
                     'result'=>$result,

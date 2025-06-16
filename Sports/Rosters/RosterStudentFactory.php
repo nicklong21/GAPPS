@@ -166,7 +166,9 @@ class RosterStudentFactory{
         $change_type = $id?'ALTER':'INSERT';
         $change_value = $RosterStudent->getName().' Record '.($id?'Updated':'Added');
         if($change_type == 'ALTER'){
-            if($student_id != $DATA['student_id'] || $jersey_number != $DATA['jersey_number'] || $is_jv != $DATA['is_jv']){
+            $data_jersey_number = $DATA['jersey_number']??'';
+            $data_is_jv = $DATA['is_jv']??'';
+            if($student_id != $DATA['student_id'] || $jersey_number != $data_jersey_number || $is_jv != $data_is_jv){
                 $this->addChangeLogRecord($change_type,$RosterStudent->getID(),$change_value);
             }
         }else{

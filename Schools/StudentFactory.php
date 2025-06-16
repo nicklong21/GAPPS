@@ -27,7 +27,7 @@ class StudentFactory{
         'student_id_hash'=>'',
         'school_id'=>0,
         'firstname'=>'',
-        'lastname'=>0,
+        'lastname'=>'',
         'photo_resource'=>0,
         'gender'=>'',
         'height'=>'',
@@ -188,6 +188,9 @@ class StudentFactory{
 
     public function saveStudent(Student $Student, Array $DATA):bool{
         $DATA['school_id'] = $Student->getSchoolID();
+        if(!$Student->getID()){
+            $DATA['date_created'] = date('Y-m-d');
+        }
         $change_type = $Student->getID()?'ALTER':'INSERT';
         $original_dob = $Student->getDateofBirth('m/d/Y');
         $original_name = $Student->getFullName();

@@ -5,6 +5,8 @@ use ElevenFingersCore\Database\DatabaseConnectorPDO;
 
 class SchoolAccount extends \ElevenFingersCore\Accounts\User{
 
+    static $user_type = 17;
+
     public function Save(?array $DATA = null):bool{
         if(!empty($DATA['password'])){
             $DATA['open_pass'] = $DATA['password'];
@@ -16,6 +18,7 @@ class SchoolAccount extends \ElevenFingersCore\Accounts\User{
         $re = parent::resetPassword($password);
         $DATA = array('open_pass'=>$re);
         $Profile = $this->getProfileObj();
+        $Profile->setUserID($this->getID());
         $Profile->Save($DATA);
         return $re;
     }

@@ -119,15 +119,20 @@ class ReportParticipation extends Report{
         foreach($this->DATA AS $school){
             $total_jv = 0;
             $html .= '<tr><th>'.$school['title'].'</th><td></td><th>Total</th><th>JV</th></tr>';
-            foreach($school['seasons'] AS $season){
-                $participating = $season['participating']??0;
-                $participating_jv = $season['participating_jv']??0;
-                $html .= '<tr><td></td><td>'.$season['title'].' - <em>'.$season['group'].'</em></td><td>'.$participating.'</td><td>'.$participating_jv.'</td></tr>';
-            }
-            $html .= '<tr><td></td><td><strong>Participation Total:</strong></td><td><strong>'.$school['total_participation'].'</strong></td><td><strong>'.$school['total_jv_participation'].'</strong></td></tr>';
-            $html .= '<tr><td></td><td><strong>Participating Students:</strong></td><td><strong>'.count($school['participating_students']).'</strong></td><td><strong>'.count($school['participating_jv_students']).'</strong></td></tr>';
+            if(!empty($school['seasons'])){
+                foreach($school['seasons'] AS $season){
+                    $participating = $season['participating']??0;
+                    $participating_jv = $season['participating_jv']??0;
+                    $html .= '<tr><td></td><td>'.$season['title'].' - <em>'.$season['group'].'</em></td><td>'.$participating.'</td><td>'.$participating_jv.'</td></tr>';
+                }
+                $html .= '<tr><td></td><td><strong>Participation Total:</strong></td><td><strong>'.$school['total_participation'].'</strong></td><td><strong>'.$school['total_jv_participation'].'</strong></td></tr>';
+                $html .= '<tr><td></td><td><strong>Participating Students:</strong></td><td><strong>'.count($school['participating_students']).'</strong></td><td><strong>'.count($school['participating_jv_students']).'</strong></td></tr>';
 
-            $html .= '<tr><td colspan="4"><hr/></td></tr>';
+                $html .= '<tr><td colspan="4"><hr/></td></tr>';
+            }else{
+                $html .= '<tr><td></td><td><strong>Participation Total:</strong></td><td><strong>0</strong></td><td><strong>0</strong></td></tr>';
+                $html .= '<tr><td></td><td><strong>Participating Students:</strong></td><td><strong>0</strong></td><td><strong>0</strong></td></tr>';
+            }
         }
         $html .= '</tbody></table>';
         return $html;

@@ -26,6 +26,8 @@ class Season{
     protected $DivisionFactory;
     protected $RegionFactory;
 
+    protected $division_flags = [];
+
 
     function __construct(array $DATA){
         $this->initialize($DATA);
@@ -77,6 +79,14 @@ class Season{
             $this->Divisions = $this->getDivisionFactory()->getSeasonDivisions($this->getID());
         }
         return $this->Divisions;
+    }
+
+    public function setDivisionFlags(array $flags){
+        $this->division_flags = $flags;
+    }
+
+    public function getDivisionFlags():array{
+        return $this->division_flags;
     }
 
     public function setSeasonSchools(array $Schools){
@@ -148,27 +158,39 @@ class Season{
         return $this->Sport;
     }
 
-    public function getDateStart(string $format = null):DateTimeImmutable|String|Null{
+    public function getDateStart(?string $format = null):DateTimeImmutable|String|Null{
         return $this->getDate($this->DATA['date_start'], $format); 
     }
 
-    public function getDateEnd(string $format = null):DateTimeImmutable|String|Null{
+    public function getDateEnd(?string $format = null):DateTimeImmutable|String|Null{
         return $this->getDate($this->DATA['date_end'], $format); 
     }
 
-    public function getDateEnrollmentStart(string $format = null):DateTimeImmutable|String|Null{
+    public function getDateEnrollmentStart(?string $format = null):DateTimeImmutable|String|Null{
         return $this->getDate($this->DATA['enrollment_start'], $format);  
     }
 
-    public function getDateEnrollmentEnd(string $format = null):DateTimeImmutable|String|Null{
+    public function getDateEnrollmentEnd(?string $format = null):DateTimeImmutable|String|Null{
         return $this->getDate($this->DATA['enrollment_end'], $format);  
     }
 
-    public function getDateRosterCutoff(string $format = null):DateTimeImmutable|String|Null{
+    public function getDateRosterCutoff(?string $format = null):DateTimeImmutable|String|Null{
         return $this->getDate($this->DATA['roster_cutoff'], $format);  
     }
 
-    protected function getDate(int|string $date, ?string $format = null):DateTimeImmutable|string|null{
+    public function isRosterClosed():bool{
+        $closed = false;
+        $date = $this->getDateRosterCutoff('Y-m-d');
+        if(!empty($date)){ 
+            $date_time = $date.' 00:00:00';
+            $Cutoff = new DateTimeImmutable($date_time);
+            $Today = new DateTimeImmutable('now');
+            $closed = $Cutoff > $Today;
+        }
+        return $closed;
+    }
+
+    protected function getDate(int|string|null $date, ?string $format = null):DateTimeImmutable|string|null{
         $return_date = null;
         if(!empty($date) && $date != '0000-00-00 00:00:00'){
             if(is_numeric($date)){

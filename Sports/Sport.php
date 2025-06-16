@@ -15,10 +15,13 @@ class Sport{
     protected $RosterFactory;
     protected $SeasonFactory;
 
+    protected $division_flags = [];
+
     protected $pitch_count = false;
 
     function __construct(array $DATA = array()){
         $this->initialize($DATA);
+        $this->division_flags = !empty($DATA['division_flags'])?json_decode($DATA['division_flags'],true):[];
     }
 
     public function getDATA():array{
@@ -79,6 +82,10 @@ class Sport{
 
     public function getParticipatingSchoolsLabel():string{
         return $this->DATA['participating_label']??'Participating Schools';
+    }
+
+    public function getDivisionFlags():array{
+        return $this->division_flags;
     }
 
     public function usePitchCount():bool{

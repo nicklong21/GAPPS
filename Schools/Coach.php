@@ -238,7 +238,7 @@ class Coach extends \ElevenFingersCore\Accounts\User{
     
     public function getSchoolYear():string{
         if(empty($this->current_school_year)){
-            $this->current_school_year = UtilityFunctions::formatSchoolYear();
+            $this->current_school_year = SCHOOL_YEAR;
         }
         return $this->current_school_year;
     }

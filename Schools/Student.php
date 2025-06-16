@@ -105,7 +105,7 @@ class Student{
                 }
                 $this_year = $Today->format('Y');
                 $this_month = $Today->format('n');
-                if($this_month <= 6){
+                if($this_month < 6){
                     $this_year = $this_year-1;
                 }
                 $this->grade = 9 - ($year_entered_9th - $this_year);

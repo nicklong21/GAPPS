@@ -30,11 +30,11 @@ class SeasonFactory{
         'title'=>'',
         'year'=>0,
         'sport_id'=>0,
-        'date_start'=>0,
-        'date_end'=>0,
-        'enrollment_start'=>0,
-        'enrollment_end'=>0,
-        'roster_cutoff'=>0,
+        'date_start'=>null,
+        'date_end'=>null,
+        'enrollment_start'=>null,
+        'enrollment_end'=>null,
+        'roster_cutoff'=>null,
         'feedback_letter'=>0,
     ];
 
@@ -66,7 +66,9 @@ class SeasonFactory{
                 $Sport = $this->SportFactory->getSport($sport_id);
                 $this->Sports[$Sport->getID()] = $Sport;
             }
+            $division_flags = $Sport->getDivisionFlags();
             $Season->setSport($Sport);
+            $Season->setDivisionFlags($division_flags);
         }
         
         return $Season;
@@ -89,9 +91,21 @@ class SeasonFactory{
     public function saveSeason(Season $Season, Array $DATA):bool{
         if(isset($DATA['date_start'])){
             if(!empty($DATA['date_start'])){
-                $DATA['year'] = UtilityFunctions::formatSchoolYear($DATA['date_start']);
+                $DATA['year'] = UtilityFunctions::formatSchoolYear($DATA['date_start'],'06-01');
             }else{
                 throw new \RuntimeException('Attempting to save a Sport Season without a valid start date is not allowed.');
+            }
+            if(empty($DATA['date_end'])){
+                $DATA['date_end'] = null;
+            }
+            if(empty($DATA['enrollment_start'])){
+                $DATA['enrollment_start'] = null;
+            }
+            if(empty($DATA['enrollment_end'])){
+                $DATA['enrollment_end'] = null;
+            }
+            if(empty($DATA['roster_cutoff'])){
+                $DATA['roster_cutoff'] = null;
             }
         }
         $insert = $this->saveItem($DATA, $Season->getID());

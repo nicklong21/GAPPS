@@ -94,6 +94,7 @@ class SchoolEnrollment{
             }else{
                 $Student = $this->StudentFactory->getStudent($student_id);
             }
+            $Student->setSchoolID($this->school_id);
             $student_data['school_id'] = $this->school_id;
             if($Student->getID() || $student_data['status'] != 'REMOVED'){
                 $this->StudentFactory->saveStudent($Student,$student_data);

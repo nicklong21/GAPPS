@@ -23,6 +23,7 @@ class SportFactory{
         'sub_category_title'=>null,
         'maxpreps_stats'=>0,
         'participating_label'=>'Participating Schools',
+        'division_flags'=>null,
     ];
 
     function __construct(DatabaseConnectorPDO $DB, SportRegistry $Registry){
@@ -159,5 +160,13 @@ class SportFactory{
         $dependencies = $this->Registry::getDependencies($sport_slug);
         $GameFactory = new GameFactory($this->database, $dependencies);
         return $GameFactory;
+    }
+
+    public function saveDivisionFlags(Sport $Sport, array $flags):bool{
+        $insert = [
+            'id'=>$Sport->getID(),
+            'division_flags' => json_encode($flags),
+        ];
+        return $this->database->insertArray(static::$db_table,$insert,'id');
     }
 }

@@ -16,6 +16,7 @@ use ElevenFingersCore\GAPPS\Sports\Rosters\RosterStudent;
 use ElevenFingersCore\GAPPS\Sports\Rosters\RosterStudentFactory;
 use ElevenFingersCore\GAPPS\Sports\Rosters\RosterTables\RosterTable;
 use ElevenFingersCore\GAPPS\Academics\Rosters\RosterTables\RosterTableAcademicDayEL;
+use ElevenFingersCore\GAPPS\Academics\Rosters\RosterTables\RosterTableAcademicDayHS;
 use ElevenFingersCore\GAPPS\Academics\Rosters\RosterTables\RosterTableAcademicDayMS;
 use ElevenFingersCore\GAPPS\Academics\Rosters\RosterTables\RosterTableChess;
 use ElevenFingersCore\GAPPS\Academics\Rosters\RosterTables\RosterTableChorus;
@@ -45,6 +46,8 @@ class AcademicsRegistry extends SportRegistry{
             'division_factory'=>DivisionFactory::class,
             'region_factory'=>RegionFactory::class,
             'school_factory'=>SeasonSchoolFactory::class,
+            'roster_student_dependencies'=>[],
+            'game_score_dependencies'=>[],
         ],
         'chess'=>[
             'roster_table'=>RosterTableChess::class,
@@ -72,6 +75,9 @@ class AcademicsRegistry extends SportRegistry{
         ],
         'honors-chorus'=>[
             'roster_table'=>RosterTableChorus::class,
+        ],
+        'hs-academic-day'=>[
+            'roster_table'=>RosterTableAcademicDayHS::class,
         ],
         'instrumental-music'=>[
             'roster_table'=>RosterTableInstrumentalMusic::class,

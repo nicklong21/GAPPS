@@ -238,6 +238,11 @@ class SportRegistry{
             'roster_table'=>RosterTableGolf::class,
             'game_view'=>GameGolfView::class,
             'score'=>GameScoreGolf::class,
+            'roster_student_dependencies'=>[
+                'SeasonAverage'=>[
+                    'class'=>GolfSeasonAverage::class,
+                    'factory'=>GolfSeasonAverageFactory::class],
+                ],
         ],
         'history-bowl-hs'=>[
             'roster_table'=>RosterTableHistoryBowl::class,

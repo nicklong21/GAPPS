@@ -106,11 +106,13 @@ class RosterStudentFactory{
     public function initRosterStudentDependencies(array $RosterStudents){
         $dependency_list = $this->getDependencyValue('roster_student_dependencies');
         $dependency_registry = $this->getDependencies();
+        if(!empty($dependency_list)){
         foreach($dependency_list AS $type=>$dependency){
             $class_name = $dependency['class'];
             $factory_class = $dependency['factory'];
             $Factory = new $factory_class($this->database, $dependency_registry, $class_name);
             $Factory->initRosterStudentGroupDependency($RosterStudents,$type);
+        }
         }
     }
 

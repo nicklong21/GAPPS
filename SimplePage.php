@@ -83,7 +83,7 @@ class SimplePage{
      * @param null|array|string $order_by
      * @return SimplePage[];
      */
-    static function getPages(DatabaseConnectorPDO $DB, ?array $filter = array(), null|array|string $order_by = null):array{
+    static function getPages(DatabaseConnectorPDO $DB, ?array $filter = array(), null|array|string $order_by = 'zorder'):array{
         $filter['type'] = 'page';
         $page_data = $DB->getArrayListByKey(static::$db_table,$filter,$order_by);
         $Pages = array();
@@ -91,6 +91,11 @@ class SimplePage{
             $Pages[] = new static($DB, null, $data);
         }
         return $Pages;
+    }
+
+    public static function updatePageOrder(DatabaseConnectorPDO $DB, ?array $page_ids){
+        $success = $DB->updateOrderByKey(static::$db_table, $page_ids,'id','zorder');
+        return $success;
     }
 
 }

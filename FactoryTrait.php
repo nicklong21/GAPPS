@@ -130,7 +130,12 @@ Trait FactoryTrait{
         if (empty($value)) return null;
         try {
             $dt = new \DateTime($value);
-            return $dt->format($format);
+            if($dt->format('Y') < 1900){
+                return null;
+            }else{
+                return $dt->format($format);
+            }
+            
         } catch (\Exception $e) {
             return null;
         }
